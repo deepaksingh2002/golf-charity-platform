@@ -1,5 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 
 // Public Pages
 import HomePage from '../pages/public/HomePage';
@@ -34,43 +36,63 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   return children;
 };
 
+const PageTransition = ({ children }) => {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2 }}
+        className="w-full flex-1 flex flex-col"
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 const PublicLayout = () => (
   <div className="flex flex-col min-h-screen">
-    <Outlet />
+     <Outlet />
   </div>
 );
 
 export const AppRouter = () => {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/charities" element={<CharitiesPage />} />
-          <Route path="/charities/:id" element={<CharityDetailPage />} />
-          <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
+      <ErrorBoundary>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
+            <Route path="/charities" element={<PageTransition><CharitiesPage /></PageTransition>} />
+            <Route path="/charities/:id" element={<PageTransition><CharityDetailPage /></PageTransition>} />
+            <Route path="/how-it-works" element={<PageTransition><HowItWorksPage /></PageTransition>} />
+            <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+            <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+          </Route>
 
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-          <Route index element={<DashboardOverviewPage />} />
-          <Route path="scores" element={<ScoresPage />} />
-          <Route path="subscription" element={<SubscriptionPage />} />
-          <Route path="draws" element={<DrawPage />} />
-          <Route path="charity" element={<CharityPage />} />
-        </Route>
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+            <Route index element={<PageTransition><DashboardOverviewPage /></PageTransition>} />
+            <Route path="scores" element={<PageTransition><ScoresPage /></PageTransition>} />
+            <Route path="subscription" element={<PageTransition><SubscriptionPage /></PageTransition>} />
+            <Route path="draws" element={<PageTransition><DrawPage /></PageTransition>} />
+            <Route path="charity" element={<PageTransition><CharityPage /></PageTransition>} />
+          </Route>
 
-        <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminLayout /></ProtectedRoute>}>
-          <Route index element={<AdminDashboardPage />} />
-          <Route path="users" element={<AdminUsersPage />} />
-          <Route path="draws" element={<AdminDrawsPage />} />
-          <Route path="charities" element={<AdminCharitiesPage />} />
-          <Route path="winners" element={<AdminWinnersPage />} />
-        </Route>
+          <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminLayout /></ProtectedRoute>}>
+            <Route index element={<PageTransition><AdminDashboardPage /></PageTransition>} />
+            <Route path="users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
+            <Route path="draws" element={<PageTransition><AdminDrawsPage /></PageTransition>} />
+            <Route path="charities" element={<PageTransition><AdminCharitiesPage /></PageTransition>} />
+            <Route path="winners" element={<PageTransition><AdminWinnersPage /></PageTransition>} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 };
