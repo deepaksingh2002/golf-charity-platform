@@ -5,6 +5,15 @@ import HowItWorksPage from '../pages/public/HowItWorksPage';
 import CharitiesPage from '../pages/public/CharitiesPage';
 import CharityDetailPage from '../pages/public/CharityDetailPage';
 
+import LoginPage from '../pages/auth/LoginPage';
+import RegisterPage from '../pages/auth/RegisterPage';
+import DashboardLayout from '../pages/dashboard/DashboardLayout';
+import DashboardOverviewPage from '../pages/dashboard/DashboardOverviewPage';
+import ScoresPage from '../pages/dashboard/ScoresPage';
+import DrawPage from '../pages/dashboard/DrawPage';
+import SubscriptionPage from '../pages/dashboard/SubscriptionPage';
+import CharityPage from '../pages/dashboard/CharityPage';
+
 const Placeholder = ({ title }) => <div className="p-8 text-center text-xl font-bold">{title}</div>;
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -29,15 +38,17 @@ export const AppRouter = () => {
           <Route path="/charities" element={<CharitiesPage />} />
           <Route path="/charities/:id" element={<CharityDetailPage />} />
           <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/login" element={<Placeholder title="Login" />} />
-          <Route path="/register" element={<Placeholder title="Register" />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Route>
 
-        <Route path="/dashboard" element={<ProtectedRoute><Placeholder title="Dashboard Home" /></ProtectedRoute>} />
-        <Route path="/dashboard/scores" element={<ProtectedRoute><Placeholder title="My Scores" /></ProtectedRoute>} />
-        <Route path="/dashboard/subscription" element={<ProtectedRoute><Placeholder title="My Subscription" /></ProtectedRoute>} />
-        <Route path="/dashboard/draws" element={<ProtectedRoute><Placeholder title="Draw Results" /></ProtectedRoute>} />
-        <Route path="/dashboard/charity" element={<ProtectedRoute><Placeholder title="My Supported Charity" /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+          <Route index element={<DashboardOverviewPage />} />
+          <Route path="scores" element={<ScoresPage />} />
+          <Route path="subscription" element={<SubscriptionPage />} />
+          <Route path="draws" element={<DrawPage />} />
+          <Route path="charity" element={<CharityPage />} />
+        </Route>
 
         <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><Placeholder title="Admin Dashboard" /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><Placeholder title="Manage Users" /></ProtectedRoute>} />
