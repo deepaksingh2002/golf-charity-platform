@@ -1,5 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import HomePage from '../pages/public/HomePage';
+import HowItWorksPage from '../pages/public/HowItWorksPage';
+import CharitiesPage from '../pages/public/CharitiesPage';
+import CharityDetailPage from '../pages/public/CharityDetailPage';
 
 const Placeholder = ({ title }) => <div className="p-8 text-center text-xl font-bold">{title}</div>;
 
@@ -10,16 +14,24 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   return children;
 };
 
+const PublicLayout = () => (
+  <div className="flex flex-col min-h-screen">
+    <Outlet />
+  </div>
+);
+
 export const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Placeholder title="Home" />} />
-        <Route path="/charities" element={<Placeholder title="Charities" />} />
-        <Route path="/charities/:id" element={<Placeholder title="Charity Detail" />} />
-        <Route path="/how-it-works" element={<Placeholder title="How It Works" />} />
-        <Route path="/login" element={<Placeholder title="Login" />} />
-        <Route path="/register" element={<Placeholder title="Register" />} />
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/charities" element={<CharitiesPage />} />
+          <Route path="/charities/:id" element={<CharityDetailPage />} />
+          <Route path="/how-it-works" element={<HowItWorksPage />} />
+          <Route path="/login" element={<Placeholder title="Login" />} />
+          <Route path="/register" element={<Placeholder title="Register" />} />
+        </Route>
 
         <Route path="/dashboard" element={<ProtectedRoute><Placeholder title="Dashboard Home" /></ProtectedRoute>} />
         <Route path="/dashboard/scores" element={<ProtectedRoute><Placeholder title="My Scores" /></ProtectedRoute>} />
