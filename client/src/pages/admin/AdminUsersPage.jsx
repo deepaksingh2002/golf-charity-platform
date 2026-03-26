@@ -16,7 +16,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
-  const totalPages = 10; 
+  const [totalPages, setTotalPages] = useState(1);
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -26,6 +26,7 @@ export default function AdminUsersPage() {
     adminApi.getUsers({ page, limit: 20, search, subscriptionStatus: statusFilter })
       .then(res => {
         setUsers(res.data.users || res.data || []);
+        if (res.data.pages) setTotalPages(res.data.pages);
         setLoading(false);
       })
       .catch((err) => {

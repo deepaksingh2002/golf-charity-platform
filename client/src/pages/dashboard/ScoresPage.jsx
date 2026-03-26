@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 import { Trash2 } from 'lucide-react';
 import { Spinner } from '../../components/ui/Spinner';
+import { useAuthStore } from '../../store/authStore';
 
 export default function ScoresPage() {
   const [scores, setScores] = useState([]);
@@ -13,10 +14,16 @@ export default function ScoresPage() {
   const [value, setValue] = useState(20);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, setUser } = useAuthStore();
 
   const fetchScores = () => {
     scoreApi.getScores()
-      .then(res => { setScores(res.data); setLoading(false); })
+      .then(res => { 
+        setScores(res.data); 
+        const nextUser = user ? { ...user, scores: res.data } : { scores: res.data };
+        setUser(nextUser);
+        setLoading(false); 
+      })
       .catch(err => { toast.error('Failed to load scores'); setLoading(false); });
   };
 

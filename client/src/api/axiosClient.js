@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 
 const axiosClient = axios.create({
@@ -19,8 +20,13 @@ axiosClient.interceptors.request.use(config => {
 axiosClient.interceptors.response.use(
   response => response,
   error => {
-    if (error.response && error.response.status === 401) {
+    if (!error.response) {
+      toast.error('Could not connect to server. Please try again.');
+    } else if (error.response.status === 401) {
       useAuthStore.getState().logout();
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

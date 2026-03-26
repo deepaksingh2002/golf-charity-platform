@@ -87,7 +87,10 @@ export default function DrawPage() {
         {publishedDraws.length > 0 ? (
           <div className="space-y-4">
             {publishedDraws.map(draw => {
-              const myWin = draw.winners?.find(w => w.userId === user?._id);
+              const myWin = draw.winners?.find(w => {
+                const winnerUserId = w.userId?._id || w.userId;
+                return winnerUserId?.toString() === user?._id?.toString();
+              });
               return (
                 <Card key={draw._id}>
                   <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-6">

@@ -6,8 +6,24 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const createCheckoutSession = async (req, res) => {
   try {
-    const { priceId } = req.body;
+    const { priceId, plan } = req.body;
+    const selectedPlan = plan || (priceId && priceId.toLowerCase().includes('year') ? 'yearly' : 'monthly');
     let user = await User.findById(req.user._id);
+
+    const isMockStripe = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
+    if (isMockStripe) {
+      const now = Date.now();
+      const days = selectedPlan === 'yearly' ? 365 : 30;
+      user.subscriptionStatus = 'active';
+      user.subscriptionPlan = selectedPlan;
+      user.subscriptionRenewDate = new Date(now + days * 24 * 60 * 60 * 1000);
+      await user.save();
+      return res.json({ success: true, mocked: true, message: 'Subscription activated (test mode)' });
+    }
+
+    if (!priceId) {
+      return res.status(400).json({ message: 'priceId is required for Stripe checkout' });
+    }
 
     if (!user.stripeCustomerId) {
       const customer = await stripeService.createCustomer(user.email, user.name);
@@ -80,7 +96,8 @@ export const handleWebhook = async (req, res) => {
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    const payload = req.rawBody || req.body;
+    event = stripe.webhooks.constructEvent(payload, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }

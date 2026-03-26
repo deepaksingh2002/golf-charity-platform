@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { subscriptionApi } from '../../api/subscription.api';
+import { authApi } from '../../api/auth.api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -23,10 +24,13 @@ export default function SubscriptionPage() {
     fetchStatus();
   }, []);
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (plan) => {
     setIsProcessing(true);
     try {
-      const res = await subscriptionApi.subscribe('price_monthly_mock'); 
+      await subscriptionApi.subscribe({ plan });
+      const refreshed = await authApi.getMe();
+      setUser(refreshed.data);
+      fetchStatus();
       toast.success('Subscription initiated. Complete payment in Stripe module.');
     } catch (err) {
       toast.error('Subscription failed setup');
@@ -95,10 +99,10 @@ export default function SubscriptionPage() {
                 You currently do not have an active subscription. Subscribe now to support your chosen charity and enter the monthly draw!
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
-                <Button onClick={handleSubscribe} disabled={isProcessing}>
+                <Button onClick={() => handleSubscribe('monthly')} disabled={isProcessing}>
                   Subscribe Monthly ($25/mo)
                 </Button>
-                <Button variant="secondary" onClick={handleSubscribe} disabled={isProcessing}>
+                <Button variant="secondary" onClick={() => handleSubscribe('yearly')} disabled={isProcessing}>
                   Subscribe Yearly ($250/yr)
                 </Button>
               </div>

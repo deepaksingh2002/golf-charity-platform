@@ -11,13 +11,14 @@ const userSchema = new mongoose.Schema({
   stripeCustomerId: { type: String },
   stripeSubscriptionId: { type: String },
   subscriptionRenewDate: { type: Date },
-  selectedCharity: { type: mongoose.Schema.Types.ObjectId, ref: 'Charity' },
+  selectedCharity: { type: mongoose.Schema.Types.ObjectId, ref: 'Charity', default: null },
   charityPercentage: { type: Number, min: 10, max: 100, default: 10 },
   scores: {
     type: [{
       value: { type: Number, min: 1, max: 45 },
       date: { type: Date }
     }],
+    default: [],
     validate: [arrayLimit, '{PATH} exceeds the limit of 5']
   },
   totalWinnings: { type: Number, default: 0 },
@@ -27,13 +28,13 @@ const userSchema = new mongoose.Schema({
 });
 
 function arrayLimit(val) {
+  if (!val) return true;
   return val.length <= 5;
 }
 
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+userSchema.pre('save', async function() {
+  if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 12);
-  next();
 });
 
 userSchema.methods.comparePassword = async function(candidate) {

@@ -14,6 +14,8 @@ export default function AdminCharitiesPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', website: '' });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const fetchCharities = () => {
     setLoading(true);
@@ -48,14 +50,35 @@ export default function AdminCharitiesPage() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await adminApi.createCharity(formData);
-      toast.success('Charity created');
+      if (isEditing && editingId) {
+        await adminApi.updateCharity(editingId, formData);
+        toast.success('Charity updated');
+      } else {
+        await adminApi.createCharity(formData);
+        toast.success('Charity created');
+      }
       setModalOpen(false);
       setFormData({ name: '', description: '', website: '' });
+      setIsEditing(false);
+      setEditingId(null);
       fetchCharities();
     } catch (err) {
-      toast.error('Creation failed');
+      toast.error(isEditing ? 'Update failed' : 'Creation failed');
     }
+  };
+
+  const openCreate = () => {
+    setFormData({ name: '', description: '', website: '' });
+    setIsEditing(false);
+    setEditingId(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (charity) => {
+    setFormData({ name: charity.name || '', description: charity.description || '', website: charity.website || '' });
+    setIsEditing(true);
+    setEditingId(charity._id);
+    setModalOpen(true);
   };
 
   return (
@@ -65,13 +88,14 @@ export default function AdminCharitiesPage() {
           <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Charity Directory</h1>
           <p className="text-zinc-500 mt-1">Manage partner charities, toggle feature status, and view metrics.</p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="flex items-center gap-2 cursor-pointer">
+        <Button onClick={openCreate} className="flex items-center gap-2 cursor-pointer">
            <Plus size={18} /> Add Charity
         </Button>
       </div>
 
       <Card>
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-zinc-500 uppercase bg-zinc-50 border-b border-zinc-200">
               <tr>
@@ -97,17 +121,18 @@ export default function AdminCharitiesPage() {
                     </button>
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
-                    <Button variant="ghost" size="sm" className="px-2 cursor-pointer"><Edit size={16}/></Button>
+                    <Button variant="ghost" size="sm" className="px-2 cursor-pointer" onClick={() => openEdit(c)}><Edit size={16}/></Button>
                     <Button variant="ghost" size="sm" className="px-2 text-red-500 hover:bg-red-50 cursor-pointer" onClick={() => handleDelete(c._id)}><Trash2 size={16}/></Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Create New Charity">
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={isEditing ? 'Edit Charity' : 'Create New Charity'}>
         <form onSubmit={handleCreate} className="space-y-4">
           <Input label="Charity Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
           <Input label="Website URL" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} />
@@ -120,7 +145,7 @@ export default function AdminCharitiesPage() {
               required
             />
           </div>
-          <Button type="submit" className="w-full mt-4 cursor-pointer">Save Charity</Button>
+          <Button type="submit" className="w-full mt-4 cursor-pointer">{isEditing ? 'Update Charity' : 'Save Charity'}</Button>
         </form>
       </Modal>
     </div>

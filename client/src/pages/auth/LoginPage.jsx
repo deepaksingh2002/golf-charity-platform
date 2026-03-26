@@ -30,7 +30,7 @@ export default function LoginPage() {
       const { token, ...userData } = res.data;
       login(userData, token);
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate(userData.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed');
     } finally {

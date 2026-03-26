@@ -6,7 +6,7 @@ export const register = async (req, res) => {
     const { name, email, password } = req.body;
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(409).json({ message: 'Email already in use' });
     }
     const user = await User.create({ name, email, password });
     const token = generateToken(user._id, user.role);
@@ -15,9 +15,13 @@ export const register = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      subscriptionStatus: user.subscriptionStatus,
       token,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Email already in use' });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -72,10 +76,14 @@ export const updateProfile = async (req, res) => {
       user.email = req.body.email;
     }
     if (req.body.charityPercentage !== undefined) {
-      user.charityPercentage = req.body.charityPercentage;
+      const pct = Number(req.body.charityPercentage);
+      if (Number.isNaN(pct) || pct < 10 || pct > 100) {
+        return res.status(400).json({ message: 'Charity percentage must be between 10 and 100' });
+      }
+      user.charityPercentage = pct;
     }
-    if (req.body.selectedCharity) {
-      user.selectedCharity = req.body.selectedCharity;
+    if (Object.prototype.hasOwnProperty.call(req.body, 'selectedCharity')) {
+      user.selectedCharity = req.body.selectedCharity || null;
     }
     const updatedUser = await user.save();
     res.json({

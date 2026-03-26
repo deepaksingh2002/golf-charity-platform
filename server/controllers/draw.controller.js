@@ -6,20 +6,41 @@ import { calculatePrizePool } from '../utils/prizePool.util.js';
 
 export const createDraw = async (req, res) => {
   try {
-    const { month, drawType } = req.body;
+    const { month, drawType, forced } = req.body;
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const drawMonth = month || currentMonth;
+    const type = drawType || 'random';
+
+    const existing = await Draw.findOne({ month: drawMonth });
+    if (existing && !forced) {
+      return res.status(400).json({ message: 'Draw already exists for this month' });
+    }
+    if (existing && forced) {
+      return res.status(200).json(existing);
+    }
     
     // Calculate subscribers and prize pool
     const activeSubs = await Subscription.find({ status: 'active' });
-    const participantCount = activeSubs.length;
+    let participantCount = activeSubs.length;
 
     let monthlyRevenue = 0;
     let yearlyRevenue = 0;
     
-    activeSubs.forEach(sub => {
-      // Mocking revenue logic based on plan
-      if (sub.plan === 'monthly') monthlyRevenue += 10;
-      if (sub.plan === 'yearly') yearlyRevenue += 100 / 12; // amortised
-    });
+    if (activeSubs.length > 0) {
+      activeSubs.forEach(sub => {
+        // Mocking revenue logic based on plan
+        if (sub.plan === 'monthly') monthlyRevenue += 10;
+        if (sub.plan === 'yearly') yearlyRevenue += 100 / 12; // amortised
+      });
+    } else {
+      const activeUsers = await User.find({ subscriptionStatus: 'active' });
+      participantCount = activeUsers.length;
+      activeUsers.forEach(u => {
+        if (u.subscriptionPlan === 'yearly') yearlyRevenue += 100 / 12;
+        else monthlyRevenue += 10;
+      });
+    }
 
     const lastDraw = await Draw.findOne().sort({ createdAt: -1 });
     const rolledOverJackpot = lastDraw ? lastDraw.jackpotRolledOver : 0;
@@ -27,8 +48,8 @@ export const createDraw = async (req, res) => {
     const prizePool = calculatePrizePool(participantCount, monthlyRevenue, yearlyRevenue, rolledOverJackpot);
 
     const draw = await Draw.create({
-      month,
-      drawType,
+      month: drawMonth,
+      drawType: type,
       status: 'draft',
       prizePool,
       participantCount
@@ -43,7 +64,9 @@ export const createDraw = async (req, res) => {
 export const simulateDraw = async (req, res) => {
   try {
     const { id } = req.params;
-    const draw = await Draw.findById(id);
+    const draw = id === 'current'
+      ? await Draw.findOne({ status: { $ne: 'published' } }).sort({ createdAt: -1 })
+      : await Draw.findById(id);
 
     if (!draw) return res.status(404).json({ message: 'Draw not found' });
     if (draw.status === 'published') return res.status(400).json({ message: 'Already published' });
@@ -77,7 +100,9 @@ export const simulateDraw = async (req, res) => {
 export const publishDraw = async (req, res) => {
   try {
     const { id } = req.params;
-    const draw = await Draw.findById(id);
+    const draw = id === 'current'
+      ? await Draw.findOne({ status: { $ne: 'published' } }).sort({ createdAt: -1 })
+      : await Draw.findById(id);
 
     if (!draw) return res.status(404).json({ message: 'Draw not found' });
     if (draw.status === 'published') return res.status(400).json({ message: 'Already published' });
@@ -105,6 +130,13 @@ export const publishDraw = async (req, res) => {
 
     if (!hasJackpotWinner) {
       draw.jackpotRolledOver = draw.prizePool.fiveMatch;
+      const [year, month] = draw.month.split('-').map(Number);
+      const nextMonthDate = new Date(year, month, 1);
+      const nextMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
+      await Draw.findOneAndUpdate(
+        { month: nextMonth },
+        { $inc: { jackpotRolledOver: draw.prizePool.fiveMatch } }
+      );
     } else {
       draw.jackpotRolledOver = 0;
     }

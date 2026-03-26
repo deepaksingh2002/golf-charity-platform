@@ -23,10 +23,10 @@ export default function AdminWinnersPage() {
 
   useEffect(() => { fetchWinners(); }, []);
 
-  const verifyWinner = async (drawId, userId) => {
+  const verifyWinner = async (drawId, winnerId) => {
     if(!window.confirm('Mark this winner as verified & paid?')) return;
     try {
-      await adminApi.verifyWinner(drawId, userId);
+      await adminApi.verifyWinner(drawId, winnerId);
       toast.success('Winner verified');
       fetchWinners();
       setModalOpen(false);
@@ -44,44 +44,50 @@ export default function AdminWinnersPage() {
 
       <Card>
         <CardContent className="p-0">
-          <table className="w-full text-sm text-left">
-             <thead className="text-xs text-zinc-500 uppercase bg-zinc-50 border-b border-zinc-200">
-               <tr>
-                 <th className="px-6 py-4 font-semibold">Winner ID</th>
-                 <th className="px-6 py-4 font-semibold">Draw Match</th>
-                 <th className="px-6 py-4 font-semibold">Prize</th>
-                 <th className="px-6 py-4 font-semibold">Status</th>
-                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
-               </tr>
-             </thead>
-             <tbody className="divide-y divide-zinc-200">
-               {loading ? (
-                 <tr><td colSpan="5" className="py-12 text-center"><Spinner className="mx-auto" /></td></tr>
-               ) : winners.length === 0 ? (
-                 <tr><td colSpan="5" className="py-12 text-center text-zinc-500">No pending winners.</td></tr>
-               ) : winners.map((w, idx) => (
-                 <tr key={idx} className="hover:bg-zinc-50 transition">
-                   <td className="px-6 py-4 font-medium text-zinc-900">User ID:<br/><span className="text-xs text-zinc-500">{w.userId}</span></td>
-                   <td className="px-6 py-4">
-                     <Badge variant="inactive">{w.matchCount}-Match Tier</Badge>
-                   </td>
-                   <td className="px-6 py-4 font-bold text-emerald-600">${w.prizeAmount?.toLocaleString()}</td>
-                   <td className="px-6 py-4">
-                     {w.paymentStatus === 'paid' ? <Badge variant="paid">Verified & Paid</Badge> : <Badge variant="pending">Pending</Badge>}
-                   </td>
-                   <td className="px-6 py-4 text-right">
-                     {w.proofUrl ? (
-                       <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => { setSelectedProof(w); setModalOpen(true); }}>
-                         <Eye size={16} className="mr-1.5"/> View Proof
-                       </Button>
-                     ) : (
-                       <span className="text-xs text-zinc-400 italic">No proof uploaded</span>
-                     )}
-                   </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+               <thead className="text-xs text-zinc-500 uppercase bg-zinc-50 border-b border-zinc-200">
+                 <tr>
+                   <th className="px-6 py-4 font-semibold">Winner</th>
+                   <th className="px-6 py-4 font-semibold">Draw Match</th>
+                   <th className="px-6 py-4 font-semibold">Prize</th>
+                   <th className="px-6 py-4 font-semibold">Status</th>
+                   <th className="px-6 py-4 font-semibold text-right">Actions</th>
                  </tr>
-               ))}
-             </tbody>
-          </table>
+               </thead>
+               <tbody className="divide-y divide-zinc-200">
+                 {loading ? (
+                   <tr><td colSpan="5" className="py-12 text-center"><Spinner className="mx-auto" /></td></tr>
+                 ) : winners.length === 0 ? (
+                   <tr><td colSpan="5" className="py-12 text-center text-zinc-500">No pending winners.</td></tr>
+                 ) : winners.map((w, idx) => (
+                   <tr key={idx} className="hover:bg-zinc-50 transition">
+                     <td className="px-6 py-4 font-medium text-zinc-900">
+                       {w.userName || 'Unknown User'}
+                       <br/>
+                       <span className="text-xs text-zinc-500">{w.userEmail || w.userId}</span>
+                     </td>
+                     <td className="px-6 py-4">
+                       <Badge variant="inactive">{w.matchCount}-Match Tier</Badge>
+                     </td>
+                     <td className="px-6 py-4 font-bold text-emerald-600">${w.prizeAmount?.toLocaleString()}</td>
+                     <td className="px-6 py-4">
+                       {w.paymentStatus === 'paid' ? <Badge variant="paid">Verified & Paid</Badge> : <Badge variant="pending">Pending</Badge>}
+                     </td>
+                     <td className="px-6 py-4 text-right">
+                       {w.proofUrl ? (
+                         <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => { setSelectedProof(w); setModalOpen(true); }}>
+                           <Eye size={16} className="mr-1.5"/> View Proof
+                         </Button>
+                       ) : (
+                         <span className="text-xs text-zinc-400 italic">No proof uploaded</span>
+                       )}
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
@@ -94,9 +100,9 @@ export default function AdminWinnersPage() {
              
              {selectedProof.paymentStatus !== 'paid' ? (
                <div className="flex gap-4">
-                 <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 cursor-pointer text-white" onClick={() => verifyWinner(selectedProof.drawId, selectedProof.userId)}>
-                   <CheckCircle size={18} className="mr-2"/> Approve & Mark Paid
-                 </Button>
+                 <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 cursor-pointer text-white" onClick={() => verifyWinner(selectedProof.drawId, selectedProof.winnerId)}>
+                  <CheckCircle size={18} className="mr-2"/> Approve & Mark Paid
+                </Button>
                </div>
              ) : (
                <div className="text-center p-3 bg-emerald-50 text-emerald-700 rounded-lg font-semibold">

@@ -39,6 +39,10 @@ export const updateScore = async (req, res) => {
     const { scoreId } = req.params;
     const user = await User.findById(req.user._id);
 
+    if (value === undefined && date === undefined) {
+      return res.status(400).json({ message: 'Nothing to update' });
+    }
+
     const score = user.scores.id(scoreId);
     if (!score) {
       return res.status(404).json({ message: 'Score not found' });

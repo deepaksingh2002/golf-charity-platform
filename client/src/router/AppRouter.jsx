@@ -8,6 +8,7 @@ import HomePage from '../pages/public/HomePage';
 import HowItWorksPage from '../pages/public/HowItWorksPage';
 import CharitiesPage from '../pages/public/CharitiesPage';
 import CharityDetailPage from '../pages/public/CharityDetailPage';
+import NotFoundPage from '../pages/public/NotFoundPage';
 
 // Auth Pages
 import LoginPage from '../pages/auth/LoginPage';
@@ -90,7 +91,7 @@ export const AppRouter = () => {
             <Route path="winners" element={<PageTransition><AdminWinnersPage /></PageTransition>} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
         </Routes>
       </ErrorBoundary>
     </BrowserRouter>

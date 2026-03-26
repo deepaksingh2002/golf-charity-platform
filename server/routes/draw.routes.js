@@ -1,12 +1,12 @@
 import express from 'express';
 import { createDraw, simulateDraw, publishDraw, getPublishedDraws, getCurrentDraw, uploadWinnerProof } from '../controllers/draw.controller.js';
-import { protect, adminOnly, subscriberOnly } from '../middleware/auth.middleware.js';
+import { protect, adminOnly } from '../middleware/auth.middleware.js';
 import upload from '../middleware/upload.middleware.js';
 
 const router = express.Router();
 
 router.get('/', getPublishedDraws);
-router.get('/current', protect, subscriberOnly, getCurrentDraw);
+router.get('/current', protect, getCurrentDraw);
 
 router.post('/', protect, adminOnly, createDraw);
 router.post('/:id/simulate', protect, adminOnly, simulateDraw);

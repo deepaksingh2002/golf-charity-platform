@@ -6,7 +6,10 @@ import Charity from '../models/Charity.model.js';
 export const getDashboardStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
-    const activeSubscribers = await Subscription.countDocuments({ status: 'active' });
+    let activeSubscribers = await Subscription.countDocuments({ status: 'active' });
+    if (activeSubscribers === 0) {
+      activeSubscribers = await User.countDocuments({ subscriptionStatus: 'active' });
+    }
     
     // Total Prize Pool (all time) from draws
     const allDraws = await Draw.find();
@@ -61,12 +64,19 @@ export const getAllUsers = async (req, res) => {
       ];
     }
 
+    const total = await User.countDocuments(query);
     const users = await User.find(query)
       .select('-password')
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    res.json(users);
+    res.json({
+      users,
+      total,
+      pages: Math.ceil(total / limit) || 1,
+      page
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -74,7 +84,7 @@ export const getAllUsers = async (req, res) => {
 
 export const getUserDetail = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id).select('-password').populate('selectedCharity');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const subscriptions = await Subscription.find({ userId: user._id });
@@ -85,7 +95,11 @@ export const getUserDetail = async (req, res) => {
       return { drawId: d._id, month: d.month, ...winnerData.toObject() };
     });
 
-    res.json({ user, subscriptions, drawWins: userDraws });
+    res.json({
+      ...user.toObject(),
+      subscriptions,
+      drawWins: userDraws
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -124,6 +138,7 @@ export const manageSubscription = async (req, res) => {
       user.subscriptionStatus = 'cancelled';
     } else if (action === 'activate') {
       user.subscriptionStatus = 'active';
+      if (!user.subscriptionPlan) user.subscriptionPlan = 'monthly';
     }
 
     await user.save();
@@ -145,7 +160,14 @@ export const getWinnersList = async (req, res) => {
           allWinners.push({
             drawId: draw._id,
             month: draw.month,
-            winner: w
+            winnerId: w._id,
+            userId: w.userId?._id || w.userId,
+            userName: w.userId?.name,
+            userEmail: w.userId?.email,
+            matchCount: w.matchCount,
+            prizeAmount: w.prizeAmount,
+            paymentStatus: w.paymentStatus,
+            proofUrl: w.proofUrl
           });
         }
       });
@@ -164,7 +186,10 @@ export const verifyWinner = async (req, res) => {
     const draw = await Draw.findById(drawId);
     if (!draw) return res.status(404).json({ message: 'Draw not found' });
 
-    const winner = draw.winners.id(winnerId);
+    let winner = draw.winners.id(winnerId);
+    if (!winner) {
+      winner = draw.winners.find(w => w.userId.toString() === winnerId.toString());
+    }
     if (!winner) return res.status(404).json({ message: 'Winner entry not found' });
 
     if (!winner.proofUrl) return res.status(400).json({ message: 'Proof not uploaded yet' });
