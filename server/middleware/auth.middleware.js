@@ -1,7 +1,7 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User.model');
+import jwt from 'jsonwebtoken';
+import User from '../models/User.model.js';
 
-const protect = async (req, res, next) => {
+export const protect = async (req, res, next) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
@@ -22,7 +22,7 @@ const protect = async (req, res, next) => {
   }
 };
 
-const adminOnly = (req, res, next) => {
+export const adminOnly = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
@@ -30,12 +30,10 @@ const adminOnly = (req, res, next) => {
   }
 };
 
-const subscriberOnly = (req, res, next) => {
+export const subscriberOnly = (req, res, next) => {
   if (req.user && req.user.subscriptionStatus === 'active') {
     next();
   } else {
     res.status(403).json({ message: 'Active subscription required' });
   }
 };
-
-module.exports = { protect, adminOnly, subscriberOnly };

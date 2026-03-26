@@ -1,6 +1,6 @@
-const Charity = require('../models/Charity.model');
+import Charity from '../models/Charity.model.js';
 
-const getCharities = async (req, res) => {
+export const getCharities = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const page = parseInt(req.query.page) || 1;
@@ -25,7 +25,7 @@ const getCharities = async (req, res) => {
   }
 };
 
-const getCharity = async (req, res) => {
+export const getCharity = async (req, res) => {
   try {
     const charity = await Charity.findById(req.params.id);
     if (!charity || !charity.isActive) return res.status(404).json({ message: 'Charity not found' });
@@ -35,7 +35,7 @@ const getCharity = async (req, res) => {
   }
 };
 
-const createCharity = async (req, res) => {
+export const createCharity = async (req, res) => {
   try {
     const { name, description, website, imageUrl, galleryImages } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
@@ -49,7 +49,7 @@ const createCharity = async (req, res) => {
   }
 };
 
-const updateCharity = async (req, res) => {
+export const updateCharity = async (req, res) => {
   try {
     const charity = await Charity.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!charity) return res.status(404).json({ message: 'Charity not found' });
@@ -59,7 +59,7 @@ const updateCharity = async (req, res) => {
   }
 };
 
-const deleteCharity = async (req, res) => {
+export const deleteCharity = async (req, res) => {
   try {
     const charity = await Charity.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!charity) return res.status(404).json({ message: 'Charity not found' });
@@ -69,7 +69,7 @@ const deleteCharity = async (req, res) => {
   }
 };
 
-const toggleFeatured = async (req, res) => {
+export const toggleFeatured = async (req, res) => {
   try {
     const charity = await Charity.findById(req.params.id);
     if (!charity) return res.status(404).json({ message: 'Charity not found' });
@@ -81,7 +81,7 @@ const toggleFeatured = async (req, res) => {
   }
 };
 
-const addEvent = async (req, res) => {
+export const addEvent = async (req, res) => {
   try {
     const charity = await Charity.findById(req.params.id);
     if (!charity) return res.status(404).json({ message: 'Charity not found' });
@@ -92,5 +92,3 @@ const addEvent = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-module.exports = { getCharities, getCharity, createCharity, updateCharity, deleteCharity, toggleFeatured, addEvent };

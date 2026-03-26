@@ -1,6 +1,6 @@
-const express = require('express');
-const { getCharities, getCharity, createCharity, updateCharity, deleteCharity, toggleFeatured, addEvent } = require('../controllers/charity.controller');
-const { protect, adminOnly } = require('../middleware/auth.middleware');
+import express from 'express';
+import { getCharities, getCharity, createCharity, updateCharity, deleteCharity, toggleFeatured, addEvent } from '../controllers/charity.controller.js';
+import { protect, adminOnly } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -13,4 +13,4 @@ router.delete('/:id', protect, adminOnly, deleteCharity);
 router.patch('/:id/featured', protect, adminOnly, toggleFeatured);
 router.post('/:id/events', protect, adminOnly, addEvent);
 
-module.exports = router;
+export default router;

@@ -1,10 +1,10 @@
-const Draw = require('../models/Draw.model');
-const User = require('../models/User.model');
-const Subscription = require('../models/Subscription.model');
-const drawService = require('../services/draw.service');
-const { calculatePrizePool } = require('../utils/prizePool.util');
+import Draw from '../models/Draw.model.js';
+import User from '../models/User.model.js';
+import Subscription from '../models/Subscription.model.js';
+import * as drawService from '../services/draw.service.js';
+import { calculatePrizePool } from '../utils/prizePool.util.js';
 
-const createDraw = async (req, res) => {
+export const createDraw = async (req, res) => {
   try {
     const { month, drawType } = req.body;
     
@@ -40,7 +40,7 @@ const createDraw = async (req, res) => {
   }
 };
 
-const simulateDraw = async (req, res) => {
+export const simulateDraw = async (req, res) => {
   try {
     const { id } = req.params;
     const draw = await Draw.findById(id);
@@ -74,7 +74,7 @@ const simulateDraw = async (req, res) => {
   }
 };
 
-const publishDraw = async (req, res) => {
+export const publishDraw = async (req, res) => {
   try {
     const { id } = req.params;
     const draw = await Draw.findById(id);
@@ -116,7 +116,7 @@ const publishDraw = async (req, res) => {
   }
 };
 
-const getPublishedDraws = async (req, res) => {
+export const getPublishedDraws = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const page = parseInt(req.query.page) || 1;
@@ -133,7 +133,7 @@ const getPublishedDraws = async (req, res) => {
   }
 };
 
-const getCurrentDraw = async (req, res) => {
+export const getCurrentDraw = async (req, res) => {
   try {
     const draw = await Draw.findOne({ status: { $ne: 'published' } }).sort({ createdAt: -1 });
     if (!draw) return res.status(404).json({ message: 'No active draw found' });
@@ -155,7 +155,7 @@ const getCurrentDraw = async (req, res) => {
   }
 };
 
-const uploadWinnerProof = async (req, res) => {
+export const uploadWinnerProof = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
@@ -176,5 +176,3 @@ const uploadWinnerProof = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-module.exports = { createDraw, simulateDraw, publishDraw, getPublishedDraws, getCurrentDraw, uploadWinnerProof };

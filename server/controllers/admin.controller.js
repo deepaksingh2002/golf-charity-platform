@@ -1,9 +1,9 @@
-const User = require('../models/User.model');
-const Draw = require('../models/Draw.model');
-const Subscription = require('../models/Subscription.model');
-const Charity = require('../models/Charity.model');
+import User from '../models/User.model.js';
+import Draw from '../models/Draw.model.js';
+import Subscription from '../models/Subscription.model.js';
+import Charity from '../models/Charity.model.js';
 
-const getDashboardStats = async (req, res) => {
+export const getDashboardStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const activeSubscribers = await Subscription.countDocuments({ status: 'active' });
@@ -46,7 +46,7 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-const getAllUsers = async (req, res) => {
+export const getAllUsers = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const page = parseInt(req.query.page) || 1;
@@ -72,7 +72,7 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-const getUserDetail = async (req, res) => {
+export const getUserDetail = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -91,7 +91,7 @@ const getUserDetail = async (req, res) => {
   }
 };
 
-const editUserScore = async (req, res) => {
+export const editUserScore = async (req, res) => {
   try {
     const { userId, scoreId } = req.params;
     const { value, date } = req.body;
@@ -112,7 +112,7 @@ const editUserScore = async (req, res) => {
   }
 };
 
-const manageSubscription = async (req, res) => {
+export const manageSubscription = async (req, res) => {
   try {
     const { userId } = req.params;
     const { action } = req.body;
@@ -133,7 +133,7 @@ const manageSubscription = async (req, res) => {
   }
 };
 
-const getWinnersList = async (req, res) => {
+export const getWinnersList = async (req, res) => {
   try {
     const { paymentStatus } = req.query;
     const draws = await Draw.find({ 'winners.0': { $exists: true } }).populate('winners.userId', 'name email');
@@ -157,7 +157,7 @@ const getWinnersList = async (req, res) => {
   }
 };
 
-const verifyWinner = async (req, res) => {
+export const verifyWinner = async (req, res) => {
   try {
     const { drawId, winnerId } = req.params;
 
@@ -178,7 +178,7 @@ const verifyWinner = async (req, res) => {
   }
 };
 
-const getCharityReport = async (req, res) => {
+export const getCharityReport = async (req, res) => {
   try {
     const users = await User.find({ subscriptionStatus: 'active' }).populate('selectedCharity');
     
@@ -204,9 +204,4 @@ const getCharityReport = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};
-
-module.exports = {
-  getDashboardStats, getAllUsers, getUserDetail, editUserScore,
-  manageSubscription, getWinnersList, verifyWinner, getCharityReport
 };

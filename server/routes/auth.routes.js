@@ -1,9 +1,9 @@
-const express = require('express');
-const { body } = require('express-validator');
-const { register, login, getMe, updateProfile, changePassword } = require('../controllers/auth.controller');
-const { protect } = require('../middleware/auth.middleware');
-const validate = require('../middleware/validate.middleware');
-const authLimiter = require('../middleware/rateLimiter.middleware');
+import express from 'express';
+import { body } from 'express-validator';
+import { register, login, getMe, updateProfile, changePassword } from '../controllers/auth.controller.js';
+import { protect } from '../middleware/auth.middleware.js';
+import validate from '../middleware/validate.middleware.js';
+import authLimiter from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
@@ -45,4 +45,4 @@ router.put(
   changePassword
 );
 
-module.exports = router;
+export default router;

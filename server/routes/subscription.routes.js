@@ -1,6 +1,6 @@
-const express = require('express');
-const { createCheckoutSession, cancelSubscription, getSubscriptionStatus, handleWebhook } = require('../controllers/subscription.controller');
-const { protect } = require('../middleware/auth.middleware');
+import express from 'express';
+import { createCheckoutSession, cancelSubscription, getSubscriptionStatus, handleWebhook } from '../controllers/subscription.controller.js';
+import { protect } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -14,4 +14,4 @@ router.post('/webhook', express.raw({ type: 'application/json' }), (req, res, ne
   next();
 }, handleWebhook);
 
-module.exports = router;
+export default router;

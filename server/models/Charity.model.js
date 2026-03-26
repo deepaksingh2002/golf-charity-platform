@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const charitySchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -18,4 +18,4 @@ const charitySchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('Charity', charitySchema);
+export default mongoose.model('Charity', charitySchema);

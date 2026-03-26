@@ -1,7 +1,7 @@
-const cron = require('node-cron');
-const Draw = require('../models/Draw.model');
-const Subscription = require('../models/Subscription.model');
-const { calculatePrizePool } = require('../utils/prizePool.util');
+import cron from 'node-cron';
+import Draw from '../models/Draw.model.js';
+import Subscription from '../models/Subscription.model.js';
+import { calculatePrizePool } from '../utils/prizePool.util.js';
 
 const startMonthlyDrawJob = () => {
   // 0 9 1 * * => 9am on 1st of every month
@@ -44,4 +44,4 @@ const startMonthlyDrawJob = () => {
   });
 };
 
-module.exports = startMonthlyDrawJob;
+export default startMonthlyDrawJob;

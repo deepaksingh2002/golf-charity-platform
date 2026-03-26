@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const drawSchema = new mongoose.Schema({
   month: { type: String, required: true },
@@ -25,4 +25,4 @@ const drawSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('Draw', drawSchema);
+export default mongoose.model('Draw', drawSchema);

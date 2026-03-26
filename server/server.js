@@ -1,17 +1,20 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-require('dotenv').config();
-const connectDB = require('./config/db');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import connectDB from './config/db.js';
 
 // Routes
-const authRoutes = require('./routes/auth.routes');
-const scoreRoutes = require('./routes/score.routes');
-const charityRoutes = require('./routes/charity.routes');
-const subscriptionRoutes = require('./routes/subscription.routes');
-const drawRoutes = require('./routes/draw.routes');
-const adminRoutes = require('./routes/admin.routes');
+import authRoutes from './routes/auth.routes.js';
+import scoreRoutes from './routes/score.routes.js';
+import charityRoutes from './routes/charity.routes.js';
+import subscriptionRoutes from './routes/subscription.routes.js';
+import drawRoutes from './routes/draw.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+
+// Controller for standalone webhook usage
+import { handleWebhook } from './controllers/subscription.controller.js';
 
 const app = express();
 
@@ -24,8 +27,8 @@ app.use(cors({
 }));
 app.use(morgan('dev'));
 
-const subscriptionController = require('./controllers/subscription.controller');
-app.post('/api/subscriptions/webhook', express.raw({ type: 'application/json' }), subscriptionController.handleWebhook);
+// Webhook needs raw body - MUST be before express.json()
+app.post('/api/subscriptions/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
 app.use(express.json());
 

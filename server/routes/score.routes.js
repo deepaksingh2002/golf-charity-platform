@@ -1,8 +1,8 @@
-const express = require('express');
-const { body } = require('express-validator');
-const { addScore, getScores, updateScore, deleteScore } = require('../controllers/score.controller');
-const { protect, subscriberOnly } = require('../middleware/auth.middleware');
-const validate = require('../middleware/validate.middleware');
+import express from 'express';
+import { body } from 'express-validator';
+import { addScore, getScores, updateScore, deleteScore } from '../controllers/score.controller.js';
+import { protect, subscriberOnly } from '../middleware/auth.middleware.js';
+import validate from '../middleware/validate.middleware.js';
 
 const router = express.Router();
 
@@ -24,4 +24,4 @@ router.get('/', getScores);
 router.put('/:scoreId', scoreValidationRules, validate, updateScore);
 router.delete('/:scoreId', deleteScore);
 
-module.exports = router;
+export default router;

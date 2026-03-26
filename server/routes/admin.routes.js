@@ -1,6 +1,6 @@
-const express = require('express');
-const { getDashboardStats, getAllUsers, getUserDetail, editUserScore, manageSubscription, getWinnersList, verifyWinner, getCharityReport } = require('../controllers/admin.controller');
-const { protect, adminOnly } = require('../middleware/auth.middleware');
+import express from 'express';
+import { getDashboardStats, getAllUsers, getUserDetail, editUserScore, manageSubscription, getWinnersList, verifyWinner, getCharityReport } from '../controllers/admin.controller.js';
+import { protect, adminOnly } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -18,4 +18,4 @@ router.put('/draws/:drawId/winners/:winnerId/verify', verifyWinner);
 
 router.get('/charity-report', getCharityReport);
 
-module.exports = router;
+export default router;

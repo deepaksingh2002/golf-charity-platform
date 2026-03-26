@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.mailtrap.io',
@@ -9,7 +9,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-const sendEmail = async (options) => {
+export const sendEmail = async (options) => {
   try {
     const mailOptions = {
       from: `"Golf Charity Platform" <${process.env.EMAIL_FROM || 'noreply@golfcharity.com'}>`,
@@ -23,7 +23,7 @@ const sendEmail = async (options) => {
   }
 };
 
-const sendWelcomeEmail = async (user) => {
+export const sendWelcomeEmail = async (user) => {
   const html = `
     <h1>Welcome to Golf Charity Platform, ${user.name}!</h1>
     <p>Thank you for registering. You can now subscribe to support your selected charity and enter your scores for the upcoming draw.</p>
@@ -31,7 +31,7 @@ const sendWelcomeEmail = async (user) => {
   await sendEmail({ email: user.email, subject: 'Welcome to Golf Charity Platform', html });
 };
 
-const sendDrawResultEmail = async (user, drawResults, userMatch) => {
+export const sendDrawResultEmail = async (user, drawResults, userMatch) => {
   const won = userMatch > 0;
   const html = `
     <h1>Draw Results for ${drawResults.month}</h1>
@@ -42,7 +42,7 @@ const sendDrawResultEmail = async (user, drawResults, userMatch) => {
   await sendEmail({ email: user.email, subject: `Draw Results: ${drawResults.month}`, html });
 };
 
-const sendWinnerVerificationEmail = async (user, prize) => {
+export const sendWinnerVerificationEmail = async (user, prize) => {
   const html = `
     <h1>Congratulations ${user.name}!</h1>
     <p>You have won <strong>$${prize}</strong> in the latest draw.</p>
@@ -51,18 +51,11 @@ const sendWinnerVerificationEmail = async (user, prize) => {
   await sendEmail({ email: user.email, subject: 'Action Required: Claim Your Prize', html });
 };
 
-const sendPaymentConfirmationEmail = async (user, amount) => {
+export const sendPaymentConfirmationEmail = async (user, amount) => {
   const html = `
     <h1>Payment Confirmation</h1>
     <p>Hi ${user.name}, your payout of <strong>$${amount}</strong> has been processed successfully.</p>
     <p>Thank you for supporting your charity!</p>
   `;
   await sendEmail({ email: user.email, subject: 'Prize Payment Processed', html });
-};
-
-module.exports = {
-  sendWelcomeEmail,
-  sendDrawResultEmail,
-  sendWinnerVerificationEmail,
-  sendPaymentConfirmationEmail
 };

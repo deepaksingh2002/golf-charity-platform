@@ -1,9 +1,10 @@
-const User = require('../models/User.model');
-const Subscription = require('../models/Subscription.model');
-const stripeService = require('../services/stripe.service');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+import User from '../models/User.model.js';
+import Subscription from '../models/Subscription.model.js';
+import * as stripeService from '../services/stripe.service.js';
+import Stripe from 'stripe';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const createCheckoutSession = async (req, res) => {
+export const createCheckoutSession = async (req, res) => {
   try {
     const { priceId } = req.body;
     let user = await User.findById(req.user._id);
@@ -28,7 +29,7 @@ const createCheckoutSession = async (req, res) => {
   }
 };
 
-const cancelSubscription = async (req, res) => {
+export const cancelSubscription = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user.stripeSubscriptionId) {
@@ -51,7 +52,7 @@ const cancelSubscription = async (req, res) => {
   }
 };
 
-const getSubscriptionStatus = async (req, res) => {
+export const getSubscriptionStatus = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user.stripeSubscriptionId) {
@@ -74,7 +75,7 @@ const getSubscriptionStatus = async (req, res) => {
   }
 };
 
-const handleWebhook = async (req, res) => {
+export const handleWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -169,5 +170,3 @@ const handleWebhook = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-module.exports = { createCheckoutSession, cancelSubscription, getSubscriptionStatus, handleWebhook };

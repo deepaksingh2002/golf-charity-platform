@@ -1,7 +1,7 @@
-const User = require('../models/User.model');
-const { generateToken, generateRefreshToken } = require('../utils/jwt.util');
+import User from '../models/User.model.js';
+import { generateToken, generateRefreshToken } from '../utils/jwt.util.js';
 
-const register = async (req, res) => {
+export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const userExists = await User.findOne({ email });
@@ -22,7 +22,7 @@ const register = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select('+password');
@@ -44,7 +44,7 @@ const login = async (req, res) => {
   }
 };
 
-const getMe = async (req, res) => {
+export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('selectedCharity').select('-password');
     if (user) {
@@ -57,7 +57,7 @@ const getMe = async (req, res) => {
   }
 };
 
-const updateProfile = async (req, res) => {
+export const updateProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -90,7 +90,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-const changePassword = async (req, res) => {
+export const changePassword = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('+password');
     if (!user) {
@@ -107,5 +107,3 @@ const changePassword = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-module.exports = { register, login, getMe, updateProfile, changePassword };

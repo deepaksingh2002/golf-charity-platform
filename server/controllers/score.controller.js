@@ -1,6 +1,6 @@
-const User = require('../models/User.model');
+import User from '../models/User.model.js';
 
-const addScore = async (req, res) => {
+export const addScore = async (req, res) => {
   try {
     const { value, date } = req.body;
     const user = await User.findById(req.user._id);
@@ -23,7 +23,7 @@ const addScore = async (req, res) => {
   }
 };
 
-const getScores = async (req, res) => {
+export const getScores = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     const sortedScores = user.scores.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -33,7 +33,7 @@ const getScores = async (req, res) => {
   }
 };
 
-const updateScore = async (req, res) => {
+export const updateScore = async (req, res) => {
   try {
     const { value, date } = req.body;
     const { scoreId } = req.params;
@@ -56,7 +56,7 @@ const updateScore = async (req, res) => {
   }
 };
 
-const deleteScore = async (req, res) => {
+export const deleteScore = async (req, res) => {
   try {
     const { scoreId } = req.params;
     const user = await User.findById(req.user._id);
@@ -75,5 +75,3 @@ const deleteScore = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-module.exports = { addScore, getScores, updateScore, deleteScore };

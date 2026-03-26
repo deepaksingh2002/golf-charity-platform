@@ -1,4 +1,4 @@
-const calculatePrizePool = (subscriberCount, monthlyRevenue, yearlyRevenue, rolledOverJackpot = 0) => {
+export const calculatePrizePool = (subscriberCount, monthlyRevenue, yearlyRevenue, rolledOverJackpot = 0) => {
   const totalRevenue = monthlyRevenue + yearlyRevenue;
   const pool = totalRevenue * 0.30;
   return {
@@ -8,5 +8,3 @@ const calculatePrizePool = (subscriberCount, monthlyRevenue, yearlyRevenue, roll
     threeMatch: pool * 0.25
   };
 };
-
-module.exports = { calculatePrizePool };

@@ -1,7 +1,7 @@
-const User = require('../models/User.model');
-const Draw = require('../models/Draw.model');
+import User from '../models/User.model.js';
+import Draw from '../models/Draw.model.js';
 
-const generateRandomNumbers = () => {
+export const generateRandomNumbers = () => {
   const numbers = new Set();
   while (numbers.size < 5) {
     numbers.add(Math.floor(Math.random() * 45) + 1);
@@ -9,7 +9,7 @@ const generateRandomNumbers = () => {
   return Array.from(numbers);
 };
 
-const generateAlgorithmicNumbers = (allUserScores) => {
+export const generateAlgorithmicNumbers = (allUserScores) => {
   const frequencies = {};
   for (let i = 1; i <= 45; i++) frequencies[i] = 0;
 
@@ -25,7 +25,7 @@ const generateAlgorithmicNumbers = (allUserScores) => {
   return sorted.slice(0, 5).map(Number);
 };
 
-const matchUserScores = (drawnNumbers, userScores) => {
+export const matchUserScores = (drawnNumbers, userScores) => {
   let matchCount = 0;
   userScores.forEach(score => {
     if (drawnNumbers.includes(score)) {
@@ -39,7 +39,7 @@ const matchUserScores = (drawnNumbers, userScores) => {
   };
 };
 
-const calculateWinners = async (drawId) => {
+export const calculateWinners = async (drawId) => {
   const draw = await Draw.findById(drawId);
   if (!draw) throw new Error('Draw not found');
 
@@ -74,5 +74,3 @@ const calculateWinners = async (drawId) => {
 
   return winnersList;
 };
-
-module.exports = { generateRandomNumbers, generateAlgorithmicNumbers, matchUserScores, calculateWinners };
