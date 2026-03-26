@@ -23,7 +23,8 @@ A MERN stack application allowing users to support charities via subscriptions, 
    - `STRIPE_SECRET_KEY` & `STRIPE_WEBHOOK_SECRET`
    - `CLOUDINARY_*` keys
    - `EMAIL_*` credentials
-4. `npm run dev`
+4. Create the test admin account once with `npm run create:admin`
+5. `npm start`
 
 ### 3. Frontend Setup
 1. `cd client`
@@ -32,7 +33,8 @@ A MERN stack application allowing users to support charities via subscriptions, 
 4. `npm run dev`
 
 ## Test Credentials
-- **Admin Setup**: Register a new user, then manually connect to your MongoDB database and change the `role` field on the user document from `"user"` to `"admin"`.
+- **Admin Setup**: Run `npm run create:admin` inside `/server` to create the built-in admin account.
+- **Admin Login**: Email `admin@golfcharity.com` / Password `Admin1234!`
 - **Stripe Testing**: Use standard Stripe test cards (`4242 4242 4242 4242`) for testing subscription triggers locally via the Stripe CLI webhook listener.
 
 ## Architecture Highlights
