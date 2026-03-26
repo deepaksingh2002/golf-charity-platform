@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { adminApi } from '../../api/admin.api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
 import { Spinner } from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
 
@@ -12,15 +10,25 @@ export default function AdminDrawsPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [simulation, setSimulation] = useState(null);
-  const [drawModal, setDrawModal] = useState(false);
+  const [error, setError] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-       await adminApi.getDashboardStats(); // ensures auth config
-       setLoading(false);
+      const res = await adminApi.getCurrentDraw();
+      setCurrentDraw(res.data?.draw || null);
+      setSimulation(res.data?.draw?.status === 'simulated' ? res.data.draw : null);
+      setError('');
     } catch (err) {
-       setLoading(false);
+      if (err.response?.status === 404) {
+        setCurrentDraw(null);
+        setSimulation(null);
+        setError('');
+      } else {
+        setError(err.response?.data?.message || 'Failed to load current draw.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,6 +39,7 @@ export default function AdminDrawsPage() {
     try {
       await adminApi.createDraw({ forced: true });
       toast.success('Draw doc forced creation');
+      await fetchData();
     } catch (err) {
       toast.error('Draw creation failed or already exists');
     } finally {
@@ -42,8 +51,8 @@ export default function AdminDrawsPage() {
     setProcessing(true);
     try {
       const res = await adminApi.simulateDraw('current'); 
+      setCurrentDraw(res.data);
       setSimulation(res.data);
-      setDrawModal(true);
       toast.success('Simulation complete');
     } catch (err) {
       toast.error('Simulation failed');
@@ -58,13 +67,18 @@ export default function AdminDrawsPage() {
     try {
       await adminApi.publishDraw('current');
       toast.success('Draw published successfully!');
-      setDrawModal(false);
+      setSimulation(null);
+      await fetchData();
     } catch (err) {
       toast.error('Failed to publish');
     } finally {
       setProcessing(false);
     }
   };
+
+  if (loading) {
+    return <div className="flex justify-center p-12"><Spinner /></div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -73,6 +87,12 @@ export default function AdminDrawsPage() {
         <p className="text-zinc-500 mt-1">Configure, simulate, and publish manual overrides for the algorithmic core.</p>
       </div>
 
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4 text-sm text-red-700">{error}</CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="border-brand-200">
           <CardHeader>
@@ -80,6 +100,31 @@ export default function AdminDrawsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <p className="text-sm text-zinc-600">The monthly draw usually runs automatically via cron on the 1st. Use these controls to force behavior.</p>
+
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+              {currentDraw ? (
+                <div className="grid gap-3 text-sm text-zinc-700 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Month</p>
+                    <p className="mt-1 font-semibold text-zinc-900">{currentDraw.month}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Status</p>
+                    <p className="mt-1 font-semibold capitalize text-zinc-900">{currentDraw.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Type</p>
+                    <p className="mt-1 font-semibold capitalize text-zinc-900">{currentDraw.drawType}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Participants</p>
+                    <p className="mt-1 font-semibold text-zinc-900">{currentDraw.participantCount || 0}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-500">No draft draw exists yet for the current cycle. Create one to begin simulation.</p>
+              )}
+            </div>
             
             <div className="flex gap-4 border-t border-zinc-100 pt-6">
               <Button variant="secondary" onClick={handleCreateDraw} disabled={processing} className="cursor-pointer">

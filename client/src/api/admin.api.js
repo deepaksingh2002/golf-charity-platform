@@ -9,6 +9,7 @@ export const adminApi = {
   getWinners: (params) => axiosClient.get('/admin/winners', { params }),
   verifyWinner: (drawId, winnerId) => axiosClient.put(`/admin/draws/${drawId}/winners/${winnerId}/verify`),
   getCharityReport: () => axiosClient.get('/admin/charity-report'),
+  getCurrentDraw: () => axiosClient.get('/draws/current'),
   
   createCharity: (data) => axiosClient.post('/charities', data),
   updateCharity: (id, data) => axiosClient.put(`/charities/${id}`, data),

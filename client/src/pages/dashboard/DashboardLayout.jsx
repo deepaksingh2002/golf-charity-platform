@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut } from 'lucide-react';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
@@ -49,6 +49,15 @@ export default function DashboardLayout() {
         <header className="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-6 z-30 shrink-0">
           <div className="lg:hidden text-xl font-bold text-zinc-900 tracking-tight">Golf<span className="text-emerald-500">Charity</span></div>
           <div className="ml-auto flex items-center space-x-4">
+            {user?.role === 'admin' && (
+              <Link
+                to="/admin"
+                className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-100"
+              >
+                <Shield size={16} />
+                <span>Open Admin Panel</span>
+              </Link>
+            )}
             <Badge variant={user?.subscriptionStatus === 'active' ? 'active' : 'inactive'} className="hidden sm:inline-flex">
               {user?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
             </Badge>
@@ -77,6 +86,15 @@ export default function DashboardLayout() {
               <span className="text-[10px] mt-1 font-medium">{item.name}</span>
             </NavLink>
          ))}
+         {user?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="flex flex-col items-center justify-center w-full py-1 text-violet-600"
+            >
+              <Shield size={20} />
+              <span className="text-[10px] mt-1 font-medium">Admin</span>
+            </Link>
+         )}
       </nav>
     </div>
   );

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { ShieldCheck } from 'lucide-react';
 import { authApi } from '../../api/auth.api';
 import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/ui/Input';
@@ -45,6 +46,19 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-zinc-900 mb-2">Welcome Back</h1>
           <p className="text-zinc-500">Sign in to manage your scores and subscriptions.</p>
         </div>
+
+        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-full bg-emerald-100 p-2 text-emerald-700">
+              <ShieldCheck size={16} />
+            </div>
+            <div className="text-sm text-emerald-950">
+              <p className="font-semibold">Admin access</p>
+              <p className="mt-1 text-emerald-800">Admin users sign in here with their admin email and will be sent straight to the admin panel.</p>
+              <p className="mt-2 font-medium">Demo admin: admin@golfcharity.com</p>
+            </div>
+          </div>
+        </div>
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Input 
@@ -67,6 +81,9 @@ export default function LoginPage() {
         
         <p className="text-center mt-6 text-zinc-600 text-sm">
           Don't have an account? <Link to="/register" className="text-brand-600 font-semibold hover:underline">Register here</Link>
+        </p>
+        <p className="text-center mt-2 text-zinc-500 text-sm">
+          Already an admin? After signing in, open <span className="font-medium text-zinc-700">/admin</span> any time.
         </p>
       </div>
     </div>
