@@ -1,9 +1,10 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Spinner } from '../components/ui/Spinner';
+import { authApi } from '../api/auth.api';
 
 // Public Pages
 const HomePage = lazy(() => import('../pages/public/HomePage'));
@@ -63,40 +64,82 @@ const PublicLayout = () => (
   </div>
 );
 
+const AuthBootstrap = ({ children }) => {
+  const token = useAuthStore(state => state.token);
+  const setUser = useAuthStore(state => state.setUser);
+  const logout = useAuthStore(state => state.logout);
+  const [loading, setLoading] = useState(Boolean(token));
+
+  useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    authApi.getMe()
+      .then((res) => {
+        if (!active) return;
+        setUser(res.data);
+      })
+      .catch(() => {
+        if (!active) return;
+        logout();
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [token, setUser, logout]);
+
+  if (loading) {
+    return <div className="flex justify-center p-12"><Spinner /></div>;
+  }
+
+  return children;
+};
+
 export const AppRouter = () => {
   return (
     <BrowserRouter>
       <ErrorBoundary>
-        <Suspense fallback={<div className="flex justify-center p-12"><Spinner /></div>}>
-          <Routes>
-            <Route element={<PublicLayout />}>
-              <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
-              <Route path="/charities" element={<PageTransition><CharitiesPage /></PageTransition>} />
-              <Route path="/charities/:id" element={<PageTransition><CharityDetailPage /></PageTransition>} />
-              <Route path="/how-it-works" element={<PageTransition><HowItWorksPage /></PageTransition>} />
-              <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
-              <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
-            </Route>
+        <AuthBootstrap>
+          <Suspense fallback={<div className="flex justify-center p-12"><Spinner /></div>}>
+            <Routes>
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
+                <Route path="/charities" element={<PageTransition><CharitiesPage /></PageTransition>} />
+                <Route path="/charities/:id" element={<PageTransition><CharityDetailPage /></PageTransition>} />
+                <Route path="/how-it-works" element={<PageTransition><HowItWorksPage /></PageTransition>} />
+                <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+                <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+              </Route>
 
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route index element={<PageTransition><DashboardOverviewPage /></PageTransition>} />
-              <Route path="scores" element={<PageTransition><ScoresPage /></PageTransition>} />
-              <Route path="subscription" element={<PageTransition><SubscriptionPage /></PageTransition>} />
-              <Route path="draws" element={<PageTransition><DrawPage /></PageTransition>} />
-              <Route path="charity" element={<PageTransition><CharityPage /></PageTransition>} />
-            </Route>
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                <Route index element={<PageTransition><DashboardOverviewPage /></PageTransition>} />
+                <Route path="scores" element={<PageTransition><ScoresPage /></PageTransition>} />
+                <Route path="subscription" element={<PageTransition><SubscriptionPage /></PageTransition>} />
+                <Route path="draws" element={<PageTransition><DrawPage /></PageTransition>} />
+                <Route path="charity" element={<PageTransition><CharityPage /></PageTransition>} />
+              </Route>
 
-            <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminLayout /></ProtectedRoute>}>
-              <Route index element={<PageTransition><AdminDashboardPage /></PageTransition>} />
-              <Route path="users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
-              <Route path="draws" element={<PageTransition><AdminDrawsPage /></PageTransition>} />
-              <Route path="charities" element={<PageTransition><AdminCharitiesPage /></PageTransition>} />
-              <Route path="winners" element={<PageTransition><AdminWinnersPage /></PageTransition>} />
-            </Route>
+              <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminLayout /></ProtectedRoute>}>
+                <Route index element={<PageTransition><AdminDashboardPage /></PageTransition>} />
+                <Route path="users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
+                <Route path="draws" element={<PageTransition><AdminDrawsPage /></PageTransition>} />
+                <Route path="charities" element={<PageTransition><AdminCharitiesPage /></PageTransition>} />
+                <Route path="winners" element={<PageTransition><AdminWinnersPage /></PageTransition>} />
+              </Route>
 
-            <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
-          </Routes>
-        </Suspense>
+              <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
+            </Routes>
+          </Suspense>
+        </AuthBootstrap>
       </ErrorBoundary>
     </BrowserRouter>
   );
