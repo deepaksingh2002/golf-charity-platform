@@ -11,7 +11,8 @@ export const createCheckoutSession = async (req, res) => {
     let user = await User.findById(req.user._id);
 
     const isMockStripe = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
-    if (isMockStripe) {
+    const allowDevMock = process.env.NODE_ENV === 'development' && !priceId && plan;
+    if (isMockStripe || allowDevMock) {
       const now = Date.now();
       const days = selectedPlan === 'yearly' ? 365 : 30;
       user.subscriptionStatus = 'active';
