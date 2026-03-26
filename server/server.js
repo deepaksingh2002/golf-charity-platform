@@ -21,15 +21,41 @@ const app = express();
 connectDB();
 
 app.use(helmet());
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URLS,
+  process.env.CORS_ORIGINS,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+]
+  .filter(Boolean)
+  .join(',')
   .split(',')
   .map(o => o.trim())
   .filter(Boolean);
 
+const normalizeOrigin = (value) => value?.trim().replace(/\/+$/, '').toLowerCase();
+
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
   if (allowedOrigins.includes('*')) return true;
-  return allowedOrigins.some(allowed => allowed.toLowerCase() === origin.toLowerCase());
+
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (allowedOrigins.some(allowed => normalizeOrigin(allowed) === normalizedOrigin)) {
+    return true;
+  }
+
+  // Optional Vercel support for preview and production frontends.
+  if (process.env.ALLOW_VERCEL_PREVIEWS === 'true' && normalizedOrigin.endsWith('.vercel.app')) {
+    return true;
+  }
+
+  const vercelProject = process.env.VERCEL_PROJECT_NAME?.trim().toLowerCase();
+  if (vercelProject && normalizedOrigin === `https://${vercelProject}.vercel.app`) {
+    return true;
+  }
+
+  return false;
 };
 
 app.use(cors({
