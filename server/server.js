@@ -26,11 +26,17 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .map(o => o.trim())
   .filter(Boolean);
 
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes('*')) return true;
+  return allowedOrigins.some(allowed => allowed.toLowerCase() === origin.toLowerCase());
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-      return callback(null, true);
+    if (isOriginAllowed(origin)) {
+      // Return the exact request origin to avoid comma-joined values.
+      return callback(null, origin || true);
     }
     return callback(new Error('Not allowed by CORS'));
   },
