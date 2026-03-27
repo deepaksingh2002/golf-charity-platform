@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { useAuthStore } from '../../store/authStore';
 import { subscriptionApi } from '../../api/subscription.api';
 import { authApi } from '../../api/auth.api';
@@ -8,34 +10,145 @@ import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
 
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+const PaymentForm = ({ clientSecret, planLabel, onSuccess, onCancel, processing }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+
+    setSubmitting(true);
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required'
+      });
+
+      if (error) {
+        toast.error(error.message || 'Payment confirmation failed');
+        return;
+      }
+
+      if (paymentIntent?.status === 'succeeded') {
+        await onSuccess();
+        return;
+      }
+
+      toast.success('Payment submitted. Waiting for Stripe to finish processing.');
+      await onSuccess();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <PaymentElement />
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Button type="submit" disabled={!stripe || !elements || submitting || processing}>
+          {submitting ? 'Confirming Payment...' : `Pay for ${planLabel}`}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting || processing}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+};
+
 export default function SubscriptionPage() {
   const { user, setUser } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [subData, setSubData] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentClientSecret, setPaymentClientSecret] = useState('');
+  const [pendingPlan, setPendingPlan] = useState('');
 
-  const fetchStatus = () => {
-    subscriptionApi.getStatus()
-      .then(res => { setSubData(res.data); setLoading(false); })
-      .catch(err => { console.error(err); setLoading(false); });
+  const getUserFromResponse = (payload) => payload?.user || payload;
+
+  const fetchStatus = async () => {
+    try {
+      const res = await subscriptionApi.getStatus();
+      setSubData(res.data);
+      return res.data;
+    } catch (err) {
+      console.error(err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshUserFromBackend = async () => {
+    const res = await authApi.getMe();
+    const freshUser = getUserFromResponse(res.data);
+    setUser(freshUser);
+    return freshUser;
   };
 
   useEffect(() => {
-    fetchStatus();
+    fetchStatus().catch(() => {});
   }, []);
 
   const handleSubscribe = async (plan) => {
     setIsProcessing(true);
     try {
-      await subscriptionApi.subscribe({ plan });
-      const refreshed = await authApi.getMe();
-      setUser(refreshed.data);
-      fetchStatus();
-      toast.success('Subscription initiated. Complete payment in Stripe module.');
+      const res = await subscriptionApi.subscribe({ plan });
+
+      if (res.data?.mocked) {
+        await refreshUserFromBackend();
+        await fetchStatus();
+        toast.success('Subscription activated!');
+        return;
+      }
+
+      if (!res.data?.clientSecret) {
+        throw new Error('Stripe did not return a client secret. Check backend Stripe env vars.');
+      }
+
+      setPendingPlan(res.data.plan || plan);
+      setPaymentClientSecret(res.data.clientSecret);
+      toast.success('Payment form ready. Complete the card details below.');
     } catch (err) {
-      toast.error('Subscription failed setup');
+      toast.error(err.response?.data?.message || err.message || 'Payment failed');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const finalizeSubscription = async () => {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    let latestUser = await refreshUserFromBackend();
+    let latestStatus = await fetchStatus();
+
+    if (latestUser?.subscriptionStatus !== 'active' && latestStatus?.status !== 'active') {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        latestUser = await refreshUserFromBackend();
+        latestStatus = await fetchStatus();
+        if (latestUser?.subscriptionStatus === 'active' || latestStatus?.status === 'active') {
+          break;
+        }
+      }
+    }
+
+    setPaymentClientSecret('');
+    setPendingPlan('');
+
+    const resolvedStatus = latestStatus?.status === 'active' ? 'active' : latestUser?.subscriptionStatus;
+    if (resolvedStatus === 'active') {
+      toast.success('Subscription activated!');
+    } else {
+      toast.success('Payment completed. Waiting for webhook confirmation.');
     }
   };
 
@@ -45,7 +158,7 @@ export default function SubscriptionPage() {
     try {
       await subscriptionApi.cancel();
       toast.success('Subscription cancelled');
-      fetchStatus();
+      await fetchStatus();
       setUser({ ...user, subscriptionStatus: 'cancelled' });
     } catch (err) {
       toast.error('Cancellation failed');
@@ -56,7 +169,10 @@ export default function SubscriptionPage() {
 
   if (loading) return <div className="flex justify-center p-12"><Spinner /></div>;
 
-  const isActive = user?.subscriptionStatus === 'active';
+  const displayStatus = subData?.status || user?.subscriptionStatus || 'inactive';
+  const displayPlan = subData?.subscriptionPlan || user?.subscriptionPlan;
+  const displayRenewDate = subData?.renewDate || user?.subscriptionRenewDate;
+  const isActive = displayStatus === 'active';
 
   return (
     <div className="space-y-8">
@@ -70,7 +186,7 @@ export default function SubscriptionPage() {
           <div className="flex justify-between items-center">
              <CardTitle>Current Plan</CardTitle>
              <Badge variant={isActive ? 'active' : 'inactive'}>
-               {user?.subscriptionStatus?.toUpperCase()}
+               {displayStatus.toUpperCase()}
              </Badge>
           </div>
         </CardHeader>
@@ -79,12 +195,12 @@ export default function SubscriptionPage() {
             <div className="space-y-6">
               <div className="flex flex-col space-y-1">
                 <span className="text-sm font-medium text-zinc-500">Plan Type</span>
-                <span className="text-lg font-semibold text-zinc-900 capitalize">{user.subscriptionPlan || 'Monthly'} Subscription</span>
+                <span className="text-lg font-semibold text-zinc-900 capitalize">{displayPlan || 'Monthly'} Subscription</span>
               </div>
               <div className="flex flex-col space-y-1">
                 <span className="text-sm font-medium text-zinc-500">Renewal Date</span>
                 <span className="text-lg font-semibold text-zinc-900">
-                  {user.subscriptionRenewDate ? new Date(user.subscriptionRenewDate).toLocaleDateString() : 'N/A'}
+                  {displayRenewDate ? new Date(displayRenewDate).toLocaleDateString() : 'N/A'}
                 </span>
               </div>
               <div className="pt-4 border-t border-zinc-100 flex gap-4">
@@ -107,8 +223,39 @@ export default function SubscriptionPage() {
                 </Button>
               </div>
               
-              <div className="mt-8 p-6 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-400 border-dashed">
-                [ Stripe Custom Payment Flow Appears Here ]
+              <div className="mt-8">
+                {paymentClientSecret ? (
+                  stripePromise ? (
+                    <Elements
+                      stripe={stripePromise}
+                      options={{
+                        clientSecret: paymentClientSecret,
+                        appearance: {
+                          theme: 'stripe'
+                        }
+                      }}
+                    >
+                      <PaymentForm
+                        clientSecret={paymentClientSecret}
+                        planLabel={pendingPlan === 'yearly' ? 'Yearly Plan' : 'Monthly Plan'}
+                        onSuccess={finalizeSubscription}
+                        onCancel={() => {
+                          setPaymentClientSecret('');
+                          setPendingPlan('');
+                        }}
+                        processing={isProcessing}
+                      />
+                    </Elements>
+                  ) : (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                      Stripe publishable key is missing. Set `VITE_STRIPE_PUBLISHABLE_KEY` in Vercel.
+                    </div>
+                  )
+                ) : (
+                  <div className="p-6 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-500 border-dashed">
+                    Choose a plan to load the secure Stripe payment form.
+                  </div>
+                )}
               </div>
             </div>
           )}
