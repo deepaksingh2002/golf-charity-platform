@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 
 // Routes
@@ -18,15 +19,17 @@ import { handleWebhook } from './controllers/subscription.controller.js';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 connectDB();
 
-app.use(helmet());
 const allowedOrigins = [
   process.env.CLIENT_URL,
   process.env.CLIENT_URLS,
   process.env.CORS_ORIGINS,
   'http://localhost:5173',
-  'http://127.0.0.1:5173'
+  'http://127.0.0.1:5173',
+  'http://localhost:3000'
 ]
   .filter(Boolean)
   .join(',')
@@ -58,24 +61,40 @@ const isOriginAllowed = (origin) => {
   return false;
 };
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     if (isOriginAllowed(origin)) {
       // Return the exact request origin to avoid comma-joined values.
       return callback(null, origin || true);
     }
+    console.log('CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+app.use(helmet());
 app.use(morgan('dev'));
 
 // Webhook needs raw body - MUST be before express.json()
 app.post('/api/subscriptions/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
 app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    port: process.env.PORT,
+    mongoConnected: mongoose.connection.readyState === 1,
+    corsOrigin: process.env.CLIENT_URL
+  });
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/scores', scoreRoutes);
@@ -98,5 +117,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Server on port ${PORT}`));
