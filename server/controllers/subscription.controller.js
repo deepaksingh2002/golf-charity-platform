@@ -4,14 +4,21 @@ import * as stripeService from '../services/stripe.service.js';
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const resolvePriceId = (plan, explicitPriceId) => {
+  if (explicitPriceId) return explicitPriceId;
+  if (plan === 'yearly') return process.env.STRIPE_YEARLY_PRICE_ID;
+  return process.env.STRIPE_MONTHLY_PRICE_ID;
+};
+
 export const createCheckoutSession = async (req, res) => {
   try {
     const { priceId, plan } = req.body;
     const selectedPlan = plan || (priceId && priceId.toLowerCase().includes('year') ? 'yearly' : 'monthly');
+    const resolvedPriceId = resolvePriceId(selectedPlan, priceId);
     let user = await User.findById(req.user._id);
 
     const isMockStripe = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
-    const allowDevMock = process.env.NODE_ENV === 'development' && !priceId && plan;
+    const allowDevMock = process.env.NODE_ENV === 'development' && !resolvedPriceId && plan;
     if (isMockStripe || allowDevMock) {
       const now = Date.now();
       const days = selectedPlan === 'yearly' ? 365 : 30;
@@ -22,8 +29,10 @@ export const createCheckoutSession = async (req, res) => {
       return res.json({ success: true, mocked: true, message: 'Subscription activated (test mode)' });
     }
 
-    if (!priceId) {
-      return res.status(400).json({ message: 'priceId is required for Stripe checkout' });
+    if (!resolvedPriceId) {
+      return res.status(400).json({
+        message: `Missing Stripe price for ${selectedPlan} plan. Set STRIPE_${selectedPlan.toUpperCase()}_PRICE_ID on the backend.`
+      });
     }
 
     if (!user.stripeCustomerId) {
@@ -32,14 +41,16 @@ export const createCheckoutSession = async (req, res) => {
       await user.save();
     }
 
-    const subscription = await stripeService.createSubscription(user.stripeCustomerId, priceId);
+    const subscription = await stripeService.createSubscription(user.stripeCustomerId, resolvedPriceId);
     
     user.stripeSubscriptionId = subscription.id;
+    user.subscriptionPlan = selectedPlan;
     await user.save();
 
     res.json({
       subscriptionId: subscription.id,
       clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+      plan: selectedPlan
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -97,9 +108,9 @@ export const handleWebhook = async (req, res) => {
   let event;
 
   try {
-    const payload = req.rawBody || req.body;
-    event = stripe.webhooks.constructEvent(payload, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
+    console.error('Webhook signature failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -107,71 +118,70 @@ export const handleWebhook = async (req, res) => {
     const data = event.data.object;
 
     switch (event.type) {
-      case 'customer.subscription.created': {
-        const user = await User.findOne({ stripeCustomerId: data.customer });
-        if (user) {
-          user.subscriptionStatus = 'active';
-          user.stripeSubscriptionId = data.id;
-          await user.save();
-
-          await Subscription.create({
-            userId: user._id,
-            stripeSubscriptionId: data.id,
-            stripeCustomerId: data.customer,
-            stripePriceId: data.items.data[0].price.id,
-            plan: data.items.data[0].price.recurring.interval === 'year' ? 'yearly' : 'monthly',
-            status: data.status,
-            currentPeriodStart: new Date(data.current_period_start * 1000),
-            currentPeriodEnd: new Date(data.current_period_end * 1000)
-          });
-        }
-        break;
-      }
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        const sub = await Subscription.findOne({ stripeSubscriptionId: data.id });
-        if (sub) {
-          sub.status = data.status;
-          sub.currentPeriodStart = new Date(data.current_period_start * 1000);
-          sub.currentPeriodEnd = new Date(data.current_period_end * 1000);
-          await sub.save();
-        }
-        
-        const user = await User.findOne({ stripeCustomerId: data.customer });
+        const plan = data.items?.data?.[0]?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+        const subscriptionRenewDate = data.current_period_end ? new Date(data.current_period_end * 1000) : undefined;
+
+        const user = await User.findOneAndUpdate(
+          { stripeCustomerId: data.customer },
+          {
+            subscriptionStatus: data.status === 'active' ? 'active' : 'inactive',
+            stripeSubscriptionId: data.id,
+            subscriptionPlan: plan,
+            ...(subscriptionRenewDate && { subscriptionRenewDate })
+          },
+          { new: true }
+        );
+
         if (user) {
-          user.subscriptionStatus = data.status === 'active' ? 'active' : 'inactive';
-          await user.save();
+          await Subscription.findOneAndUpdate(
+            { stripeSubscriptionId: data.id },
+            {
+              userId: user._id,
+              stripeSubscriptionId: data.id,
+              stripeCustomerId: data.customer,
+              stripePriceId: data.items?.data?.[0]?.price?.id,
+              plan,
+              status: data.status === 'active' ? 'active' : 'past_due',
+              currentPeriodStart: data.current_period_start ? new Date(data.current_period_start * 1000) : undefined,
+              currentPeriodEnd: subscriptionRenewDate
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
         }
         break;
       }
       case 'customer.subscription.deleted': {
-        const user = await User.findOne({ stripeCustomerId: data.customer });
-        if (user) {
-          user.subscriptionStatus = 'lapsed';
-          await user.save();
-        }
+        await User.findOneAndUpdate(
+          { stripeCustomerId: data.customer },
+          { subscriptionStatus: 'cancelled' }
+        );
         await Subscription.findOneAndUpdate(
           { stripeSubscriptionId: data.id },
-          { status: 'lapsed' }
+          { status: 'cancelled' }
         );
         break;
       }
       case 'invoice.payment_succeeded': {
         if (data.subscription) {
-          const user = await User.findOne({ stripeCustomerId: data.customer });
-          if (user) {
-            user.subscriptionRenewDate = new Date(data.lines.data[0].period.end * 1000);
-            await user.save();
-          }
+          const renewDate = data.lines?.data?.[0]?.period?.end ? new Date(data.lines.data[0].period.end * 1000) : undefined;
+          await User.findOneAndUpdate(
+            { stripeCustomerId: data.customer },
+            {
+              subscriptionStatus: 'active',
+              ...(renewDate && { subscriptionRenewDate: renewDate })
+            }
+          );
         }
         break;
       }
       case 'invoice.payment_failed': {
         if (data.subscription) {
-          const user = await User.findOne({ stripeCustomerId: data.customer });
-          if (user) {
-            user.subscriptionStatus = 'lapsed';
-            await user.save();
-          }
+          await User.findOneAndUpdate(
+            { stripeCustomerId: data.customer },
+            { subscriptionStatus: 'lapsed' }
+          );
           await Subscription.findOneAndUpdate(
             { stripeSubscriptionId: data.subscription },
             { status: 'past_due' }
