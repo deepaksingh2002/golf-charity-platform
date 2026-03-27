@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Spinner } from '../components/ui/Spinner';
 import { authApi } from '../api/auth.api';
+import { AdminRoute } from './AdminRoute';
 
 // Public Pages
 const HomePage = lazy(() => import('../pages/public/HomePage'));
@@ -128,7 +129,7 @@ export const AppRouter = () => {
                 <Route path="charity" element={<PageTransition><CharityPage /></PageTransition>} />
               </Route>
 
-              <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminLayout /></ProtectedRoute>}>
+              <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
                 <Route index element={<PageTransition><AdminDashboardPage /></PageTransition>} />
                 <Route path="users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
                 <Route path="draws" element={<PageTransition><AdminDrawsPage /></PageTransition>} />
