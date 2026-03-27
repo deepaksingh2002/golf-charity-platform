@@ -1,11 +1,21 @@
 import { rateLimit } from 'express-rate-limit';
 
-const authLimiter = rateLimit({
+const createAuthLimiter = (max, message, extraOptions = {}) => rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { message: 'Too many requests from this IP, please try again after 15 minutes' },
+  max,
+  message: { message },
   standardHeaders: true,
   legacyHeaders: false,
+  ...extraOptions
 });
 
-export default authLimiter;
+export const loginLimiter = createAuthLimiter(
+  10,
+  'Too many login attempts from this IP, please try again after 15 minutes',
+  { skipSuccessfulRequests: true }
+);
+
+export const registerLimiter = createAuthLimiter(
+  5,
+  'Too many registration attempts from this IP, please try again after 15 minutes'
+);
