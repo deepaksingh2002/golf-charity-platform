@@ -2,15 +2,21 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 
+const getStoredToken = () => {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem('golf_token');
+};
+
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
 axiosClient.interceptors.request.use(config => {
-  const token = useAuthStore.getState().token;
+  const token = useAuthStore.getState().token || getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
