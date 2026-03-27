@@ -8,11 +8,13 @@ import { Target, Trophy, HeartHandshake, CreditCard } from 'lucide-react';
 export default function DashboardOverviewPage() {
   const { user, setUser } = useAuthStore();
   const [profile, setProfile] = useState(user);
+  const getUserFromResponse = (payload) => payload?.user || payload;
 
   useEffect(() => {
     authApi.getMe().then(res => {
-      setProfile(res.data);
-      setUser(res.data);
+      const freshUser = getUserFromResponse(res.data);
+      setProfile(freshUser);
+      setUser(freshUser);
     }).catch(console.error);
   }, []);
 
