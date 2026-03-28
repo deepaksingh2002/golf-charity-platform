@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { AdminRoute, ProtectedRoute } from '../components/ProtectedRoute';
 import { Spinner } from '../components/ui/Spinner';
-import { useGetMeQuery } from '../api/auth.api';
+import { useGetMeQuery } from '../api/authApi';
 import { logout, selectCurrentToken, selectCurrentUser, updateUser } from '../store/authSlice';
 
 // Public Pages
