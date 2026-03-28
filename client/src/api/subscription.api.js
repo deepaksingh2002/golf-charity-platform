@@ -1,12 +1,31 @@
-import axiosClient from './axiosClient';
+import { baseApi } from './baseApi';
 
-export const subscriptionApi = {
-  subscribe: (payload) => {
-    if (typeof payload === 'string') {
-      return axiosClient.post('/subscriptions/subscribe', { priceId: payload });
-    }
-    return axiosClient.post('/subscriptions/subscribe', payload);
-  },
-  cancel: () => axiosClient.post('/subscriptions/cancel'),
-  getStatus: () => axiosClient.get('/subscriptions/status'),
-};
+export const subscriptionApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getSubscriptionStatus: builder.query({
+      query: () => '/subscriptions/status',
+      providesTags: ['Subscription'],
+    }),
+    subscribe: builder.mutation({
+      query: (payload) => ({
+        url: '/subscriptions/subscribe',
+        method: 'POST',
+        body: typeof payload === 'string' ? { priceId: payload } : payload,
+      }),
+      invalidatesTags: ['Subscription', 'User'],
+    }),
+    cancelSubscription: builder.mutation({
+      query: () => ({
+        url: '/subscriptions/cancel',
+        method: 'POST',
+      }),
+      invalidatesTags: ['Subscription', 'User'],
+    }),
+  }),
+});
+
+export const {
+  useCancelSubscriptionMutation,
+  useGetSubscriptionStatusQuery,
+  useSubscribeMutation,
+} = subscriptionApi;

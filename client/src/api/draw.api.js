@@ -1,13 +1,19 @@
-import axiosClient from './axiosClient';
+import { baseApi } from './baseApi';
 
-export const drawApi = {
-  getPublishedDraws: (page = 1) => axiosClient.get(`/draws?page=${page}`),
-  getCurrentDraw: () => axiosClient.get('/draws/current'),
-  uploadProof: (drawId, file) => {
-    const formData = new FormData();
-    formData.append('proof', file);
-    return axiosClient.post(`/draws/${drawId}/proof`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-  }
-};
+export const drawApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getCurrentDraw: builder.query({
+      query: () => '/draws/current',
+      providesTags: ['Draw'],
+    }),
+    getPublishedDraws: builder.query({
+      query: (page = 1) => `/draws?page=${page}`,
+      providesTags: ['Draw'],
+    }),
+  }),
+});
+
+export const {
+  useGetCurrentDrawQuery,
+  useGetPublishedDrawsQuery,
+} = drawApi;

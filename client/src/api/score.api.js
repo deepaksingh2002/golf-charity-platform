@@ -1,8 +1,31 @@
-import axiosClient from './axiosClient';
+import { baseApi } from './baseApi';
 
-export const scoreApi = {
-  getScores: () => axiosClient.get('/scores'),
-  addScore: (data) => axiosClient.post('/scores', data),
-  updateScore: (id, data) => axiosClient.put(`/scores/${id}`, data),
-  deleteScore: (id) => axiosClient.delete(`/scores/${id}`),
-};
+export const scoreApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getScores: builder.query({
+      query: () => '/scores',
+      providesTags: ['Scores', 'User'],
+    }),
+    addScore: builder.mutation({
+      query: (body) => ({
+        url: '/scores',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Scores', 'User', 'Draw'],
+    }),
+    deleteScore: builder.mutation({
+      query: (id) => ({
+        url: `/scores/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Scores', 'User', 'Draw'],
+    }),
+  }),
+});
+
+export const {
+  useAddScoreMutation,
+  useDeleteScoreMutation,
+  useGetScoresQuery,
+} = scoreApi;

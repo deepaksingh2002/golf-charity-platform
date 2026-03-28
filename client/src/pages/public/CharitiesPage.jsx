@@ -5,7 +5,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
-import { useGetCharitiesQuery } from '../../services/apiSlice';
+import { useGetCharitiesQuery } from '../../api/charity.api';
 
 export default function CharitiesPage() {
   const [search, setSearch] = useState('');
