@@ -3,7 +3,7 @@ import { Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
-import { AdminRoute, ProtectedRoute } from '../components/ProtectedRoute';
+import { AdminRoute, GuestRoute, ProtectedRoute } from '../components/ProtectedRoute';
 import { Spinner } from '../components/ui/Spinner';
 import { useGetMeQuery } from '../api/authApi';
 import { logout, selectCurrentToken, selectCurrentUser, updateUser } from '../store/authSlice';
@@ -80,7 +80,7 @@ const AuthBootstrap = ({ children }) => {
   }, [data, dispatch]);
 
   useEffect(() => {
-    if (token && error) {
+    if (token && error?.status === 401) {
       dispatch(logout());
     }
   }, [dispatch, token, error]);
@@ -103,8 +103,8 @@ export const AppRouter = () => {
               <Route path="/charities" element={<PageTransition><CharitiesPage /></PageTransition>} />
               <Route path="/charities/:id" element={<PageTransition><CharityDetailPage /></PageTransition>} />
               <Route path="/how-it-works" element={<PageTransition><HowItWorksPage /></PageTransition>} />
-              <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
-              <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+              <Route path="/login" element={<GuestRoute><PageTransition><LoginPage /></PageTransition></GuestRoute>} />
+              <Route path="/register" element={<GuestRoute><PageTransition><RegisterPage /></PageTransition></GuestRoute>} />
             </Route>
 
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
