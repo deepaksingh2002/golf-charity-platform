@@ -1,17 +1,15 @@
-import React, { useEffect } from 'react';
-import { useDrawStore } from '../../store/drawStore';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuthStore } from '../../store/authStore';
+import { useGetCurrentDrawQuery, useGetPublishedDrawsQuery } from '../../services/apiSlice';
 
 export default function DrawPage() {
-  const { currentDraw, publishedDraws, fetchDraws, isLoading } = useDrawStore();
   const { user } = useAuthStore();
-
-  useEffect(() => {
-    fetchDraws();
-  }, [fetchDraws]);
+  const { data: currentDraw, isFetching: currentDrawLoading } = useGetCurrentDrawQuery();
+  const { data: publishedDraws = [], isFetching: publishedDrawsLoading } = useGetPublishedDrawsQuery();
+  const isLoading = currentDrawLoading || publishedDrawsLoading;
 
   if (isLoading) return <div className="flex justify-center p-12"><Spinner /></div>;
 
