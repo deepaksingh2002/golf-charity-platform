@@ -1,92 +1,111 @@
-import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { z } from 'zod';
+import { useNavigate, Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { useLoginMutation } from '../../api/authApi';
+import { setCredentials, selectIsAuthenticated, selectIsAdmin } from '../../store/authSlice';
 import toast from 'react-hot-toast';
-import { ShieldCheck } from 'lucide-react';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
-import { useLoginMutation } from '../../api/auth.api';
-import { setCredentials } from '../../store/authSlice';
 
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password is required')
+const schema = z.object({
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [loginRequest] = useLoginMutation();
-  
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isAdmin = useSelector(selectIsAdmin);
+
+  const [login, { isLoading }] = useLoginMutation();
+
   const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(loginSchema)
+    resolver: zodResolver(schema),
   });
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
+
   const onSubmit = async (data) => {
-    setLoading(true);
     try {
-      const res = await loginRequest(data).unwrap();
-      const { token, ...userData } = res;
-      dispatch(setCredentials({ user: userData, token }));
+      const result = await login(data).unwrap();
+      dispatch(setCredentials({ token: result.token, user: result.user }));
       toast.success('Welcome back!');
-      navigate(userData.role === 'admin' ? '/admin' : '/dashboard');
+      navigate(result.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
-    } finally {
-      setLoading(false);
+      toast.error(err.data?.message || 'Invalid email or password');
     }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 mb-2">Welcome Back</h1>
-          <p className="text-zinc-500">Sign in to manage your scores and subscriptions.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome back</h1>
+          <p className="text-zinc-400">Sign in to your account</p>
         </div>
-
-        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-full bg-emerald-100 p-2 text-emerald-700">
-              <ShieldCheck size={16} />
+        <div className="bg-zinc-900 rounded-2xl p-8 border border-zinc-800">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                Email
+              </label>
+              <input
+                {...register('email')}
+                type="email"
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700
+                  text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500
+                  focus:ring-1 focus:ring-emerald-500 transition-colors"
+              />
+              {errors.email && (
+                <p className="mt-1.5 text-sm text-red-400">{errors.email.message}</p>
+              )}
             </div>
-            <div className="text-sm text-emerald-950">
-              <p className="font-semibold">Admin access</p>
-              <p className="mt-1 text-emerald-800">Admin users sign in here with their admin email and will be sent straight to the admin panel.</p>
-              <p className="mt-2 font-medium">Demo admin: admin@golfcharity.com</p>
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                Password
+              </label>
+              <input
+                {...register('password')}
+                type="password"
+                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700
+                  text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500
+                  focus:ring-1 focus:ring-emerald-500 transition-colors"
+              />
+              {errors.password && (
+                <p className="mt-1.5 text-sm text-red-400">{errors.password.message}</p>
+              )}
             </div>
-          </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700
+                disabled:text-zinc-500 text-white font-medium rounded-xl transition-colors
+                min-h-[48px] flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                  Signing in...
+                </>
+              ) : 'Sign in'}
+            </button>
+          </form>
+          <p className="mt-6 text-center text-sm text-zinc-500">
+            No account?{' '}
+            <Link to="/register" className="text-emerald-400 hover:text-emerald-300 font-medium">
+              Create one
+            </Link>
+          </p>
         </div>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <Input 
-            label="Email Address" 
-            type="email" 
-            {...register('email')} 
-            error={errors.email?.message} 
-          />
-          <Input 
-            label="Password" 
-            type="password" 
-            {...register('password')} 
-            error={errors.password?.message} 
-          />
-          
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Button>
-        </form>
-        
-        <p className="text-center mt-6 text-zinc-600 text-sm">
-          Don't have an account? <Link to="/register" className="text-brand-600 font-semibold hover:underline">Register here</Link>
-        </p>
-        <p className="text-center mt-2 text-zinc-500 text-sm">
-          Already an admin? After signing in, open <span className="font-medium text-zinc-700">/admin</span> any time.
-        </p>
       </div>
     </div>
   );
