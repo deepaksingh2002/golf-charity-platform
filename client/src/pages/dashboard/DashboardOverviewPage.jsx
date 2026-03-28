@@ -1,22 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { authApi } from '../../api/auth.api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Target, Trophy, HeartHandshake, CreditCard } from 'lucide-react';
 
 export default function DashboardOverviewPage() {
-  const { user, setUser } = useAuthStore();
-  const [profile, setProfile] = useState(user);
-  const getUserFromResponse = (payload) => payload?.user || payload;
-
-  useEffect(() => {
-    authApi.getMe().then(res => {
-      const freshUser = getUserFromResponse(res.data);
-      setProfile(freshUser);
-      setUser(freshUser);
-    }).catch(console.error);
-  }, []);
+  const user = useAuthStore(state => state.user);
+  const profile = user;
 
   if (!profile) return null;
 
