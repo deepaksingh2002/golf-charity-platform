@@ -35,9 +35,9 @@ export default function LoginPage() {
   const onSubmit = async (data) => {
     try {
       const result = await login(data).unwrap();
-      dispatch(setCredentials({ token: result.token, user: result.user }));
+      dispatch(setCredentials(result));
       toast.success('Welcome back!');
-      navigate(result.user.role === 'admin' ? '/admin' : '/dashboard');
+      navigate(result.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
     } catch (err) {
       toast.error(err.data?.message || 'Invalid email or password');
     }
