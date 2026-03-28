@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { logout } from '../store/authSlice';
 
-const defaultApiBaseUrl = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+const defaultApiBaseUrl = 'https://golf-charity-6fnp.onrender.com/api';
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_URL || defaultApiBaseUrl,
