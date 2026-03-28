@@ -15,12 +15,13 @@ const authSlice = createSlice({
   },
   reducers: {
     setCredentials: (state, action) => {
-      const { token, user } = action.payload;
+      const { token, user, ...userFields } = action.payload;
+      const resolvedUser = user || userFields || null;
       state.token = token;
-      state.user = user;
+      state.user = resolvedUser;
       state.isAuthenticated = true;
       localStorage.setItem('golf_token', token);
-      localStorage.setItem('golf_user', JSON.stringify(user));
+      localStorage.setItem('golf_user', JSON.stringify(resolvedUser));
     },
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
