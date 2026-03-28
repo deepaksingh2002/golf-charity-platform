@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
-import { useGetCharitiesQuery, useGetMeQuery, useUpdateProfileMutation } from '../../services/apiSlice';
+import { useGetCharitiesQuery } from '../../api/charity.api';
+import { useGetMeQuery, useUpdateProfileMutation } from '../../api/auth.api';
+import { selectCurrentToken, selectCurrentUser, updateUser } from '../../store/authSlice';
 
 export default function CharityPage() {
-  const { user, setUser } = useAuthStore();
+  const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
+  const token = useSelector(selectCurrentToken);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [percentage, setPercentage] = useState(user?.charityPercentage || 10);
@@ -16,17 +20,17 @@ export default function CharityPage() {
     data: profile = user,
     isFetching: loading,
   } = useGetMeQuery(undefined, {
-    skip: !user && !useAuthStore.getState().token,
+    skip: !user && !token,
   });
   const { data: charities = [] } = useGetCharitiesQuery({ limit: 50 });
   const [updateProfile] = useUpdateProfileMutation();
 
   useEffect(() => {
     if (profile) {
-      setUser(profile);
+      dispatch(updateUser(profile));
       setPercentage(profile.charityPercentage || 10);
     }
-  }, [profile, setUser]);
+  }, [dispatch, profile]);
 
   const savePercentage = async () => {
     setSaving(true);

@@ -3,12 +3,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
 import { ShieldCheck } from 'lucide-react';
-import { authApi } from '../../api/auth.api';
-import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { useLoginMutation } from '../../api/auth.api';
+import { setCredentials } from '../../store/authSlice';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -18,7 +19,8 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const dispatch = useDispatch();
+  const [loginRequest] = useLoginMutation();
   
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema)
@@ -27,9 +29,9 @@ export default function LoginPage() {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await authApi.login(data);
-      const { token, ...userData } = res.data;
-      login(userData, token);
+      const res = await loginRequest(data).unwrap();
+      const { token, ...userData } = res;
+      dispatch(setCredentials({ user: userData, token }));
       toast.success('Welcome back!');
       navigate(userData.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {

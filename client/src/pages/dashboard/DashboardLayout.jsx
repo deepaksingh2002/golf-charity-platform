@@ -1,15 +1,17 @@
 import React from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
+import { logout, selectCurrentUser } from '../../store/authSlice';
 
 export default function DashboardLayout() {
-  const { user, logout } = useAuthStore();
+  const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => { dispatch(logout()); navigate('/login'); };
 
   const navItems = [
     { name: 'Overview', path: '/dashboard', icon: <LayoutDashboard size={20} /> },

@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
-import { authApi } from '../../api/auth.api';
-import { charityApi } from '../../api/charity.api';
-import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { useRegisterMutation, useUpdateProfileMutation } from '../../api/auth.api';
+import { useGetCharitiesQuery } from '../../api/charity.api';
+import { setCredentials } from '../../store/authSlice';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -23,27 +24,25 @@ const registerSchema = z.object({
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
-  const [charities, setCharities] = useState([]);
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const dispatch = useDispatch();
+  const { data: charities = [] } = useGetCharitiesQuery({ limit: 100 });
+  const [registerRequest] = useRegisterMutation();
+  const [updateProfile] = useUpdateProfileMutation();
   
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema)
   });
 
-  useEffect(() => {
-    charityApi.getCharities({ limit: 100 }).then(res => setCharities(res.data)).catch(console.error);
-  }, []);
-
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await authApi.register({ name: data.name, email: data.email, password: data.password });
-      const { token, ...userData } = res.data;
-      login(userData, token);
+      const res = await registerRequest({ name: data.name, email: data.email, password: data.password }).unwrap();
+      const { token, ...userData } = res;
+      dispatch(setCredentials({ user: userData, token }));
       
       if (data.charityId) {
-        await authApi.updateProfile({ selectedCharity: data.charityId });
+        await updateProfile({ selectedCharity: data.charityId }).unwrap();
       }
       
       toast.success('Account created successfully!');

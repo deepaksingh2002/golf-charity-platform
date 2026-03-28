@@ -1,26 +1,28 @@
 import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 import { Trash2 } from 'lucide-react';
 import { Spinner } from '../../components/ui/Spinner';
-import { useAuthStore } from '../../store/authStore';
-import { useAddScoreMutation, useDeleteScoreMutation, useGetScoresQuery } from '../../services/apiSlice';
+import { useAddScoreMutation, useDeleteScoreMutation, useGetScoresQuery } from '../../api/score.api';
+import { selectCurrentUser, updateUser } from '../../store/authSlice';
 
 export default function ScoresPage() {
   const [value, setValue] = useState(20);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, setUser } = useAuthStore();
+  const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
   const { data: scores = [], isFetching: loading } = useGetScoresQuery();
   const [addScore] = useAddScoreMutation();
   const [deleteScore] = useDeleteScoreMutation();
 
   useEffect(() => {
     const nextUser = user ? { ...user, scores } : { scores };
-    setUser(nextUser);
-  }, [scores, user, setUser]);
+    dispatch(updateUser(nextUser));
+  }, [dispatch, scores, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

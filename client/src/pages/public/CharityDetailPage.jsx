@@ -1,14 +1,15 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Calendar, Globe } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
-import { useGetCharityQuery } from '../../services/apiSlice';
+import { useGetCharityQuery } from '../../api/charity.api';
+import { selectCurrentUser } from '../../store/authSlice';
 
 export default function CharityDetailPage() {
   const { id } = useParams();
-  const { user } = useAuthStore();
+  const user = useSelector(selectCurrentUser);
   const { data: charity, isFetching: isLoading } = useGetCharityQuery(id, {
     skip: !id,
   });

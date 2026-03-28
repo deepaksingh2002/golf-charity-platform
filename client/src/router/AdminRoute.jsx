@@ -1,11 +1,12 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser, selectIsAuthenticated } from '../store/authSlice';
 
 export const AdminRoute = ({ children }) => {
   const location = useLocation();
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
-  const user = useAuthStore(state => state.user);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const user = useSelector(selectCurrentUser);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;

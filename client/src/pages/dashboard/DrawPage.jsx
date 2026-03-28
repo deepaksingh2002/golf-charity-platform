@@ -1,12 +1,13 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
-import { useAuthStore } from '../../store/authStore';
-import { useGetCurrentDrawQuery, useGetPublishedDrawsQuery } from '../../services/apiSlice';
+import { useGetCurrentDrawQuery, useGetPublishedDrawsQuery } from '../../api/draw.api';
+import { selectCurrentUser } from '../../store/authSlice';
 
 export default function DrawPage() {
-  const { user } = useAuthStore();
+  const user = useSelector(selectCurrentUser);
   const { data: currentDraw, isFetching: currentDrawLoading } = useGetCurrentDrawQuery();
   const { data: publishedDraws = [], isFetching: publishedDrawsLoading } = useGetPublishedDrawsQuery();
   const isLoading = currentDrawLoading || publishedDrawsLoading;

@@ -1,11 +1,12 @@
 import React from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Target, Trophy, HeartHandshake, CreditCard } from 'lucide-react';
+import { selectCurrentUser } from '../../store/authSlice';
 
 export default function DashboardOverviewPage() {
-  const user = useAuthStore(state => state.user);
+  const user = useSelector(selectCurrentUser);
   const profile = user;
 
   if (!profile) return null;

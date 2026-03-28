@@ -1,10 +1,11 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useAuthStore } from '../store/authStore';
+import { useDispatch, useSelector } from 'react-redux';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Spinner } from '../components/ui/Spinner';
-import { useGetMeQuery } from '../services/apiSlice';
+import { useGetMeQuery } from '../api/auth.api';
+import { logout, selectCurrentToken, selectCurrentUser, updateUser } from '../store/authSlice';
 import { AdminRoute } from './AdminRoute';
 
 // Public Pages
@@ -35,7 +36,8 @@ const AdminCharitiesPage = lazy(() => import('../pages/admin/AdminCharitiesPage'
 const AdminWinnersPage = lazy(() => import('../pages/admin/AdminWinnersPage'));
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const { user, token } = useAuthStore();
+  const user = useSelector(selectCurrentUser);
+  const token = useSelector(selectCurrentToken);
   if (!token) return <Navigate to="/login" replace />;
   if (requireAdmin && user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
   return children;
@@ -66,10 +68,9 @@ const PublicLayout = () => (
 );
 
 const AuthBootstrap = ({ children }) => {
-  const token = useAuthStore(state => state.token);
-  const user = useAuthStore(state => state.user);
-  const setUser = useAuthStore(state => state.setUser);
-  const logout = useAuthStore(state => state.logout);
+  const dispatch = useDispatch();
+  const token = useSelector(selectCurrentToken);
+  const user = useSelector(selectCurrentUser);
   const location = useLocation();
   const { data, error, isFetching } = useGetMeQuery(undefined, {
     skip: !token,
@@ -82,15 +83,15 @@ const AuthBootstrap = ({ children }) => {
 
   useEffect(() => {
     if (data) {
-      setUser(data);
+      dispatch(updateUser(data));
     }
-  }, [data, setUser]);
+  }, [data, dispatch]);
 
   useEffect(() => {
     if (token && error) {
-      logout();
+      dispatch(logout());
     }
-  }, [token, error, logout]);
+  }, [dispatch, token, error]);
 
   if (requiresBlockingAuth) {
     return <div className="flex justify-center p-12"><Spinner /></div>;
@@ -101,41 +102,39 @@ const AuthBootstrap = ({ children }) => {
 
 export const AppRouter = () => {
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <AuthBootstrap>
-          <Suspense fallback={<div className="flex justify-center p-12"><Spinner /></div>}>
-            <Routes>
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
-                <Route path="/charities" element={<PageTransition><CharitiesPage /></PageTransition>} />
-                <Route path="/charities/:id" element={<PageTransition><CharityDetailPage /></PageTransition>} />
-                <Route path="/how-it-works" element={<PageTransition><HowItWorksPage /></PageTransition>} />
-                <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
-                <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
-              </Route>
+    <ErrorBoundary>
+      <AuthBootstrap>
+        <Suspense fallback={<div className="flex justify-center p-12"><Spinner /></div>}>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
+              <Route path="/charities" element={<PageTransition><CharitiesPage /></PageTransition>} />
+              <Route path="/charities/:id" element={<PageTransition><CharityDetailPage /></PageTransition>} />
+              <Route path="/how-it-works" element={<PageTransition><HowItWorksPage /></PageTransition>} />
+              <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+              <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+            </Route>
 
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-                <Route index element={<PageTransition><DashboardOverviewPage /></PageTransition>} />
-                <Route path="scores" element={<PageTransition><ScoresPage /></PageTransition>} />
-                <Route path="subscription" element={<PageTransition><SubscriptionPage /></PageTransition>} />
-                <Route path="draws" element={<PageTransition><DrawPage /></PageTransition>} />
-                <Route path="charity" element={<PageTransition><CharityPage /></PageTransition>} />
-              </Route>
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index element={<PageTransition><DashboardOverviewPage /></PageTransition>} />
+              <Route path="scores" element={<PageTransition><ScoresPage /></PageTransition>} />
+              <Route path="subscription" element={<PageTransition><SubscriptionPage /></PageTransition>} />
+              <Route path="draws" element={<PageTransition><DrawPage /></PageTransition>} />
+              <Route path="charity" element={<PageTransition><CharityPage /></PageTransition>} />
+            </Route>
 
-              <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-                <Route index element={<PageTransition><AdminDashboardPage /></PageTransition>} />
-                <Route path="users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
-                <Route path="draws" element={<PageTransition><AdminDrawsPage /></PageTransition>} />
-                <Route path="charities" element={<PageTransition><AdminCharitiesPage /></PageTransition>} />
-                <Route path="winners" element={<PageTransition><AdminWinnersPage /></PageTransition>} />
-              </Route>
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<PageTransition><AdminDashboardPage /></PageTransition>} />
+              <Route path="users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
+              <Route path="draws" element={<PageTransition><AdminDrawsPage /></PageTransition>} />
+              <Route path="charities" element={<PageTransition><AdminCharitiesPage /></PageTransition>} />
+              <Route path="winners" element={<PageTransition><AdminWinnersPage /></PageTransition>} />
+            </Route>
 
-              <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
-            </Routes>
-          </Suspense>
-        </AuthBootstrap>
-      </ErrorBoundary>
-    </BrowserRouter>
+            <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
+          </Routes>
+        </Suspense>
+      </AuthBootstrap>
+    </ErrorBoundary>
   );
 };

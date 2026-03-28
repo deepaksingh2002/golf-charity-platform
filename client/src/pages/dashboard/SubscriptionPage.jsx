@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { useAuthStore } from '../../store/authStore';
+import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -10,9 +10,10 @@ import toast from 'react-hot-toast';
 import {
   useCancelSubscriptionMutation,
   useGetSubscriptionStatusQuery,
-  useLazyGetMeQuery,
   useSubscribeMutation,
-} from '../../services/apiSlice';
+} from '../../api/subscription.api';
+import { useLazyGetMeQuery } from '../../api/auth.api';
+import { selectCurrentUser, updateUser } from '../../store/authSlice';
 
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
@@ -69,7 +70,8 @@ const PaymentForm = ({ clientSecret, planLabel, onSuccess, onCancel, processing 
 };
 
 export default function SubscriptionPage() {
-  const { user, setUser } = useAuthStore();
+  const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentClientSecret, setPaymentClientSecret] = useState('');
   const [pendingPlan, setPendingPlan] = useState('');
@@ -84,7 +86,7 @@ export default function SubscriptionPage() {
 
   const refreshUserFromBackend = async () => {
     const freshUser = await triggerGetMe().unwrap();
-    setUser(freshUser);
+    dispatch(updateUser(freshUser));
     return freshUser;
   };
 
@@ -149,7 +151,7 @@ export default function SubscriptionPage() {
       await cancelSubscription().unwrap();
       toast.success('Subscription cancelled');
       await refetchStatus();
-      setUser({ ...user, subscriptionStatus: 'cancelled' });
+      dispatch(updateUser({ ...user, subscriptionStatus: 'cancelled' }));
     } catch (err) {
       toast.error('Cancellation failed');
     } finally {
