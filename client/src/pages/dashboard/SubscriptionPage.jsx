@@ -1,14 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuthStore } from '../../store/authStore';
-import { subscriptionApi } from '../../api/subscription.api';
-import { authApi } from '../../api/auth.api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
+import {
+  useCancelSubscriptionMutation,
+  useGetSubscriptionStatusQuery,
+  useLazyGetMeQuery,
+  useSubscribeMutation,
+} from '../../services/apiSlice';
 
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
@@ -66,56 +70,42 @@ const PaymentForm = ({ clientSecret, planLabel, onSuccess, onCancel, processing 
 
 export default function SubscriptionPage() {
   const { user, setUser } = useAuthStore();
-  const [loading, setLoading] = useState(true);
-  const [subData, setSubData] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentClientSecret, setPaymentClientSecret] = useState('');
   const [pendingPlan, setPendingPlan] = useState('');
-
-  const getUserFromResponse = (payload) => payload?.user || payload;
-
-  const fetchStatus = async () => {
-    try {
-      const res = await subscriptionApi.getStatus();
-      setSubData(res.data);
-      return res.data;
-    } catch (err) {
-      console.error(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: subData,
+    isFetching: loading,
+    refetch: refetchStatus,
+  } = useGetSubscriptionStatusQuery();
+  const [triggerGetMe] = useLazyGetMeQuery();
+  const [subscribe] = useSubscribeMutation();
+  const [cancelSubscription] = useCancelSubscriptionMutation();
 
   const refreshUserFromBackend = async () => {
-    const res = await authApi.getMe();
-    const freshUser = getUserFromResponse(res.data);
+    const freshUser = await triggerGetMe().unwrap();
     setUser(freshUser);
     return freshUser;
   };
 
-  useEffect(() => {
-    fetchStatus().catch(() => {});
-  }, []);
-
   const handleSubscribe = async (plan) => {
     setIsProcessing(true);
     try {
-      const res = await subscriptionApi.subscribe({ plan });
+      const res = await subscribe({ plan }).unwrap();
 
-      if (res.data?.mocked) {
+      if (res?.mocked) {
         await refreshUserFromBackend();
-        await fetchStatus();
+        await refetchStatus();
         toast.success('Subscription activated!');
         return;
       }
 
-      if (!res.data?.clientSecret) {
+      if (!res?.clientSecret) {
         throw new Error('Stripe did not return a client secret. Check backend Stripe env vars.');
       }
 
-      setPendingPlan(res.data.plan || plan);
-      setPaymentClientSecret(res.data.clientSecret);
+      setPendingPlan(res.plan || plan);
+      setPaymentClientSecret(res.clientSecret);
       toast.success('Payment form ready. Complete the card details below.');
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Payment failed');
@@ -128,13 +118,13 @@ export default function SubscriptionPage() {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     let latestUser = await refreshUserFromBackend();
-    let latestStatus = await fetchStatus();
+    let latestStatus = await refetchStatus().unwrap();
 
     if (latestUser?.subscriptionStatus !== 'active' && latestStatus?.status !== 'active') {
       for (let attempt = 0; attempt < 4; attempt += 1) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         latestUser = await refreshUserFromBackend();
-        latestStatus = await fetchStatus();
+        latestStatus = await refetchStatus().unwrap();
         if (latestUser?.subscriptionStatus === 'active' || latestStatus?.status === 'active') {
           break;
         }
@@ -156,9 +146,9 @@ export default function SubscriptionPage() {
     if (!window.confirm('Are you sure you want to cancel? This will forfeit future draws.')) return;
     setIsProcessing(true);
     try {
-      await subscriptionApi.cancel();
+      await cancelSubscription().unwrap();
       toast.success('Subscription cancelled');
-      await fetchStatus();
+      await refetchStatus();
       setUser({ ...user, subscriptionStatus: 'cancelled' });
     } catch (err) {
       toast.error('Cancellation failed');
