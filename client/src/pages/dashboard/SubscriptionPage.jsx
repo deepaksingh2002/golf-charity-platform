@@ -15,8 +15,11 @@ import {
 import { useLazyGetMeQuery } from '../../api/authApi';
 import { selectCurrentUser, updateUser } from '../../store/authSlice';
 
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+const stripePublishableKey =
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+
+const stripePromise = stripePublishableKey
+  ? loadStripe(stripePublishableKey)
   : null;
 
 const PaymentForm = ({ clientSecret, planLabel, onSuccess, onCancel, processing }) => {
