@@ -1,29 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { charityApi } from '../../api/charity.api';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Calendar, Globe } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useGetCharityQuery } from '../../services/apiSlice';
 
 export default function CharityDetailPage() {
   const { id } = useParams();
-  const [charity, setCharity] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuthStore();
-
-  useEffect(() => {
-    const fetchCharity = async () => {
-      try {
-        const res = await charityApi.getCharity(id);
-        setCharity(res.data);
-      } catch (err) {
-        console.error(err);
-      }
-      setIsLoading(false);
-    };
-    fetchCharity();
-  }, [id]);
+  const { data: charity, isFetching: isLoading } = useGetCharityQuery(id, {
+    skip: !id,
+  });
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Spinner size="lg" /></div>;
   if (!charity) return <div className="min-h-screen flex items-center justify-center text-zinc-500">Charity not found.</div>;
@@ -57,7 +45,7 @@ export default function CharityDetailPage() {
               <h2 className="text-2xl font-bold text-zinc-900 mb-6">Gallery</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-12">
                 {charity.galleryImages.map((img, i) => (
-                  <img key={i} src={img} alt="Gallery" className="w-full h-32 object-cover rounded-xl" />
+                  <img key={i} src={img} alt="Gallery" loading="lazy" className="w-full h-32 object-cover rounded-xl" />
                 ))}
               </div>
             </>
