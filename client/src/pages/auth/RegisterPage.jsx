@@ -1,10 +1,11 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useRegisterMutation } from '../../api/authApi';
-import { setCredentials } from '../../store/authSlice';
+import { selectIsAdmin, selectIsAuthenticated, setCredentials } from '../../store/authSlice';
 import toast from 'react-hot-toast';
 
 const schema = z.object({
@@ -20,19 +21,27 @@ const schema = z.object({
 export default function RegisterPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isAdmin = useSelector(selectIsAdmin);
   const [register, { isLoading }] = useRegisterMutation();
 
   const { register: reg, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
   });
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
+
   const onSubmit = async (data) => {
     try {
       const { confirmPassword, ...body } = data;
       const result = await register(body).unwrap();
-      dispatch(setCredentials({ token: result.token, user: result.user }));
+      dispatch(setCredentials(result));
       toast.success('Account created! Welcome.');
-      navigate('/dashboard');
+      navigate(result.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
     } catch (err) {
       toast.error(err.data?.message || 'Registration failed');
     }
