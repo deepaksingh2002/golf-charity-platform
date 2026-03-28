@@ -1,10 +1,10 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Spinner } from '../components/ui/Spinner';
-import { authApi } from '../api/auth.api';
+import { useGetMeQuery } from '../services/apiSlice';
 import { AdminRoute } from './AdminRoute';
 
 // Public Pages
@@ -67,38 +67,32 @@ const PublicLayout = () => (
 
 const AuthBootstrap = ({ children }) => {
   const token = useAuthStore(state => state.token);
+  const user = useAuthStore(state => state.user);
   const setUser = useAuthStore(state => state.setUser);
   const logout = useAuthStore(state => state.logout);
-  const [loading, setLoading] = useState(Boolean(token));
+  const location = useLocation();
+  const { data, error, isFetching } = useGetMeQuery(undefined, {
+    skip: !token,
+  });
+  const requiresBlockingAuth =
+    Boolean(token) &&
+    !user &&
+    (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/admin')) &&
+    isFetching;
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
+    if (data) {
+      setUser(data);
     }
+  }, [data, setUser]);
 
-    let active = true;
+  useEffect(() => {
+    if (token && error) {
+      logout();
+    }
+  }, [token, error, logout]);
 
-    authApi.getMe()
-      .then((res) => {
-        if (!active) return;
-        setUser(res.data);
-      })
-      .catch(() => {
-        if (!active) return;
-        logout();
-      })
-      .finally(() => {
-        if (!active) return;
-        setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [token, setUser, logout]);
-
-  if (loading) {
+  if (requiresBlockingAuth) {
     return <div className="flex justify-center p-12"><Spinner /></div>;
   }
 
