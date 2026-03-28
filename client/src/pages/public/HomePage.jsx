@@ -163,7 +163,7 @@ const CharitySpotlightSection = () => {
           </div>
           <div className="w-full lg:w-1/2 relative">
             <div className="absolute inset-0 bg-emerald-100 rounded-[2rem] transform rotate-3"></div>
-            <img src="https://images.unsplash.com/photo-1593113511475-680f4f9547d5?auto=format&fit=crop&q=80&w=800" alt="Charity impact" className="relative rounded-[2rem] shadow-2xl object-cover h-[400px] w-full" />
+            <img src="https://images.unsplash.com/photo-1593113511475-680f4f9547d5?auto=format&fit=crop&q=80&w=800" alt="Charity impact" loading="lazy" className="relative rounded-[2rem] shadow-2xl object-cover h-[400px] w-full" />
           </div>
         </div>
       </div>
