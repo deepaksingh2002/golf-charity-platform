@@ -1,104 +1,90 @@
-import React from 'react';
 import { useSelector } from 'react-redux';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Target, Trophy, HeartHandshake, CreditCard } from 'lucide-react';
 import { selectCurrentUser } from '../../store/authSlice';
+import { useGetSubscriptionStatusQuery } from '../../api/subscriptionApi';
+import { useGetPublishedDrawsQuery } from '../../api/drawApi';
+import { useGetScoresQuery } from '../../api/scoreApi';
 
 export default function DashboardOverviewPage() {
   const user = useSelector(selectCurrentUser);
-  const profile = user;
+  const { data: subData } = useGetSubscriptionStatusQuery();
+  const { data: drawData } = useGetPublishedDrawsQuery();
+  const { data: scoreData } = useGetScoresQuery();
 
-  if (!profile) return null;
+  const subscription = subData?.subscription;
+  const latestDraw = drawData?.draws?.[0];
+  const scores = scoreData?.scores || [];
+
+  const stats = [
+    {
+      label: 'Subscription',
+      value: subscription?.status || user?.subscriptionStatus || 'inactive',
+      color: subscription?.status === 'active' ? 'text-emerald-400' : 'text-zinc-400',
+    },
+    {
+      label: 'Scores entered',
+      value: scores.length + ' / 5',
+      color: 'text-violet-400',
+    },
+    {
+      label: 'Total winnings',
+      value: '£' + (user?.totalWinnings || 0).toLocaleString(),
+      color: 'text-amber-400',
+    },
+    {
+      label: 'Charity contribution',
+      value: (user?.charityPercentage || 10) + '%',
+      color: 'text-teal-400',
+    },
+  ];
 
   return (
-    <div className="space-y-8">
+    <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Overview</h1>
-        <p className="text-zinc-500 mt-1">Here is a summary of your account activity.</p>
+        <h1 className="text-2xl font-semibold text-white">
+          Welcome back, {user?.name?.split(' ')[0] || 'Player'}
+        </h1>
+        <p className="text-zinc-400 mt-1 text-sm">Here's your platform overview</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-zinc-100 rounded-lg text-zinc-600"><CreditCard size={20}/></div>
-            </div>
-            <h3 className="text-zinc-500 text-sm font-medium">Subscription</h3>
-            <div className="mt-1">
-              <Badge variant={profile.subscriptionStatus === 'active' ? 'active' : 'inactive'}>
-                {profile.subscriptionStatus?.toUpperCase()}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-brand-100 rounded-lg text-brand-600"><Target size={20}/></div>
-            </div>
-            <h3 className="text-zinc-500 text-sm font-medium">Recorded Scores</h3>
-            <p className="text-2xl font-bold text-zinc-900 mt-1">{profile.scores?.length || 0} / 5</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-violet-100 rounded-lg text-violet-600"><Trophy size={20}/></div>
-            </div>
-            <h3 className="text-zinc-500 text-sm font-medium">Total Winnings</h3>
-            <p className="text-2xl font-bold text-zinc-900 mt-1">${profile.totalWinnings?.toLocaleString() || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-rose-100 rounded-lg text-rose-600"><HeartHandshake size={20}/></div>
-            </div>
-            <h3 className="text-zinc-500 text-sm font-medium">Supported Charity</h3>
-            <p className="text-base font-bold text-zinc-900 mt-1 truncate">
-              {profile.selectedCharity?.name || 'None selected'}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map(s => (
+          <div key={s.label} className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{s.label}</p>
+            <p className={`text-xl font-semibold capitalize ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-             <CardTitle>Recent Scores</CardTitle>
-          </CardHeader>
-          <CardContent>
-             {profile.scores && profile.scores.length > 0 ? (
-               <div className="space-y-3">
-                 {[...profile.scores].reverse().slice(0,3).map(score => (
-                   <div key={score._id} className="flex justify-between items-center p-3 bg-zinc-50 rounded-lg border border-zinc-100">
-                     <span className="font-semibold text-zinc-800">Score: {score.value}</span>
-                     <span className="text-sm text-zinc-500">{new Date(score.date).toLocaleDateString()}</span>
-                   </div>
-                 ))}
-               </div>
-             ) : (
-               <p className="text-zinc-500 text-sm">No scores submitted yet.</p>
-             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-             <CardTitle>Next Draw Countdown</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center p-8">
-             <div className="w-32 h-32 rounded-full border-4 border-dashed border-brand-200 flex items-center justify-center bg-brand-50/50">
-                <div className="text-center">
-                  <span className="block text-3xl font-bold text-brand-600">1st</span>
-                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Next Month</span>
+      {scores.length > 0 && (
+        <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">Your recent scores</h2>
+          <div className="flex gap-3 flex-wrap">
+            {scores.slice(0, 5).map((s, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center font-bold text-white">
+                  {s.value}
                 </div>
-             </div>
-             <p className="text-center mt-6 text-sm text-zinc-600 max-w-xs mx-auto">Make sure you have exactly 5 scores entered to automatically participate.</p>
-          </CardContent>
-        </Card>
-      </div>
+                <span className="text-xs text-zinc-500">
+                  {new Date(s.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {latestDraw && (
+        <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">Last draw — {latestDraw.month}</h2>
+          <div className="flex gap-2 flex-wrap">
+            {latestDraw.drawnNumbers?.map(n => (
+              <div key={n} className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white text-sm">
+                {n}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

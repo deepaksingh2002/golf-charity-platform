@@ -1,134 +1,111 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
+import { useState } from 'react';
+import { useGetScoresQuery, useAddScoreMutation, useDeleteScoreMutation } from '../../api/scoreApi';
 import toast from 'react-hot-toast';
-import { Trash2 } from 'lucide-react';
-import { Spinner } from '../../components/ui/Spinner';
-import { useAddScoreMutation, useDeleteScoreMutation, useGetScoresQuery } from '../../api/score.api';
-import { selectCurrentUser, updateUser } from '../../store/authSlice';
 
 export default function ScoresPage() {
-  const [value, setValue] = useState(20);
+  const { data, isLoading, isError } = useGetScoresQuery();
+  const [addScore, { isLoading: adding }] = useAddScoreMutation();
+  const [deleteScore, { isLoading: deleting }] = useDeleteScoreMutation();
+
+  const [value, setValue] = useState(25);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const dispatch = useDispatch();
-  const user = useSelector(selectCurrentUser);
-  const { data: scores = [], isFetching: loading } = useGetScoresQuery();
-  const [addScore] = useAddScoreMutation();
-  const [deleteScore] = useDeleteScoreMutation();
 
-  useEffect(() => {
-    const nextUser = user ? { ...user, scores } : { scores };
-    dispatch(updateUser(nextUser));
-  }, [dispatch, scores, user]);
+  const scores = data?.scores || [];
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleAdd = async () => {
+    if (!date) { toast.error('Please select a date'); return; }
     try {
-      await addScore({ value: Number(value), date }).unwrap();
-      toast.success('Score saved!');
+      await addScore({ value: parseInt(value), date }).unwrap();
+      toast.success('Score added');
+      setValue(25);
+      setDate(new Date().toISOString().split('T')[0]);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error saving score');
-    } finally {
-      setIsSubmitting(false);
+      toast.error(err.data?.message || 'Failed to add score');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this score?')) return;
+  const handleDelete = async (scoreId) => {
+    if (!confirm('Delete this score?')) return;
     try {
-      await deleteScore(id).unwrap();
-      toast.success('Score deleted');
-    } catch (err) {
-      toast.error('Error deleting score');
+      await deleteScore(scoreId).unwrap();
+      toast.success('Score removed');
+    } catch {
+      toast.error('Failed to delete score');
     }
   };
 
-  if (loading) return <div className="flex justify-center p-12"><Spinner /></div>;
+  if (isLoading) return <div className="p-6 text-zinc-400">Loading scores...</div>;
+  if (isError) return <div className="p-6 text-red-400">Failed to load scores.</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">My Scores</h1>
-        <p className="text-zinc-500 mt-1">Submit your latest golf scores. You need exactly 5 scores to enter a draw.</p>
+        <h1 className="text-2xl font-semibold text-white">My scores</h1>
+        <p className="text-zinc-400 text-sm mt-1">Enter your last 5 Stableford scores (1–45)</p>
       </div>
 
-      {scores.length < 5 && (
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
-          <p className="text-amber-800 text-sm">
-            <strong>Attention:</strong> You currently have {scores.length} score(s). You need {5 - scores.length} more to be eligible for the next draw.
-          </p>
+      {/* Entry form */}
+      <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800 space-y-4">
+        <h2 className="text-sm font-medium text-zinc-300">Add new score</h2>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <label className="text-xs text-zinc-500 mb-2 block">Score value: {value}</label>
+            <input type="range" min="1" max="45" value={value}
+              onChange={e => setValue(+e.target.value)}
+              className="w-full accent-emerald-500" />
+            <div className="flex justify-between text-xs text-zinc-600 mt-1">
+              <span>1</span><span>45</span>
+            </div>
+          </div>
+          <div className="sm:w-48">
+            <label className="text-xs text-zinc-500 mb-2 block">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700
+                text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div className="sm:self-end">
+            <button onClick={handleAdd} disabled={adding}
+              className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500
+                disabled:bg-zinc-700 text-white rounded-lg font-medium transition-colors min-h-[44px]">
+              {adding ? 'Adding...' : 'Add score'}
+            </button>
+          </div>
         </div>
-      )}
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-1 h-fit">
-          <CardHeader>
-            <CardTitle>Add Score</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">Score Value: <span className="font-bold text-brand-600">{value}</span></label>
-                <input 
-                  type="range" min="1" max="45" 
-                  value={value} onChange={e => setValue(e.target.value)} 
-                  className="w-full accent-brand-600 cursor-pointer"
-                />
-                <div className="flex justify-between text-xs text-zinc-400 mt-1">
-                  <span>1</span><span>45</span>
+      {/* Scores list */}
+      <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+        <div className="px-5 py-4 border-b border-zinc-800">
+          <h2 className="text-sm font-medium text-zinc-300">
+            Your scores ({scores.length}/5)
+            {scores.length === 0 && <span className="ml-2 text-zinc-500">— add your first score above</span>}
+          </h2>
+        </div>
+        {scores.length === 0 ? (
+          <div className="px-5 py-10 text-center text-zinc-500 text-sm">No scores yet</div>
+        ) : (
+          <div className="divide-y divide-zinc-800">
+            {scores.map((s) => (
+              <div key={s._id} className="flex items-center px-5 py-4 gap-4">
+                <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center font-bold text-white flex-shrink-0">
+                  {s.value}
                 </div>
+                <div className="flex-1">
+                  <p className="text-white font-medium">Score: {s.value}</p>
+                  <p className="text-zinc-500 text-sm">
+                    {new Date(s.date).toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'long', year:'numeric' })}
+                  </p>
+                </div>
+                <button onClick={() => handleDelete(s._id)} disabled={deleting}
+                  className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950
+                    rounded-lg transition-colors border border-transparent hover:border-red-900">
+                  Delete
+                </button>
               </div>
-              <Input 
-                label="Date Played" 
-                type="date" 
-                value={date} 
-                onChange={e => setDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                required
-              />
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Submit Score'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Recent Scores History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {scores.length === 0 ? (
-              <p className="text-zinc-500 text-sm text-center py-6">No scores registered yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {scores.map((score, idx) => (
-                  <div key={score._id} className="flex justify-between items-center p-4 bg-zinc-50 rounded-xl border border-zinc-100 shadow-sm transition hover:shadow-md">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-zinc-200 flex items-center justify-center font-bold text-zinc-700">
-                        #{idx + 1}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-zinc-900 text-lg">{score.value}</p>
-                        <p className="text-xs text-zinc-500">{new Date(score.date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => handleDelete(score._id)}
-                      className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-md transition cursor-pointer"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
