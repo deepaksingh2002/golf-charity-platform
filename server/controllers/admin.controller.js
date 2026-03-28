@@ -17,6 +17,7 @@ export const getDashboardStats = async (req, res) => {
     
     // Total Charity Distributed
     const charities = await Charity.find();
+    const totalCharities = charities.length;
     const totalCharityDistributed = charities.reduce((sum, c) => sum + (c.totalReceived || 0), 0);
     
     // Current Month Revenue (mocked approx: sub * price)
@@ -39,6 +40,8 @@ export const getDashboardStats = async (req, res) => {
     res.json({
       totalUsers,
       activeSubscribers,
+      totalCharities,
+      totalDraws: drawStats.totalDraws,
       totalPrizePool,
       totalCharityDistributed,
       currentMonthRevenue,
