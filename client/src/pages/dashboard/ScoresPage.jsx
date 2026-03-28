@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { scoreApi } from '../../api/score.api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -7,37 +6,28 @@ import toast from 'react-hot-toast';
 import { Trash2 } from 'lucide-react';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuthStore } from '../../store/authStore';
+import { useAddScoreMutation, useDeleteScoreMutation, useGetScoresQuery } from '../../services/apiSlice';
 
 export default function ScoresPage() {
-  const [scores, setScores] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [value, setValue] = useState(20);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, setUser } = useAuthStore();
-
-  const fetchScores = () => {
-    scoreApi.getScores()
-      .then(res => { 
-        setScores(res.data); 
-        const nextUser = user ? { ...user, scores: res.data } : { scores: res.data };
-        setUser(nextUser);
-        setLoading(false); 
-      })
-      .catch(err => { toast.error('Failed to load scores'); setLoading(false); });
-  };
+  const { data: scores = [], isFetching: loading } = useGetScoresQuery();
+  const [addScore] = useAddScoreMutation();
+  const [deleteScore] = useDeleteScoreMutation();
 
   useEffect(() => {
-    fetchScores();
-  }, []);
+    const nextUser = user ? { ...user, scores } : { scores };
+    setUser(nextUser);
+  }, [scores, user, setUser]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await scoreApi.addScore({ value: Number(value), date });
+      await addScore({ value: Number(value), date }).unwrap();
       toast.success('Score saved!');
-      fetchScores();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error saving score');
     } finally {
@@ -48,9 +38,8 @@ export default function ScoresPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this score?')) return;
     try {
-      await scoreApi.deleteScore(id);
+      await deleteScore(id).unwrap();
       toast.success('Score deleted');
-      fetchScores();
     } catch (err) {
       toast.error('Error deleting score');
     }
