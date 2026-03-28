@@ -1,33 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { charityApi } from '../../api/charity.api';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
+import { useGetCharitiesQuery } from '../../services/apiSlice';
 
 export default function CharitiesPage() {
-  const [charities, setCharities] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    const fetchCharities = async () => {
-      setIsLoading(true);
-      try {
-        const res = await charityApi.getCharities({ search, page, limit: 9 });
-        setCharities(res.data);
-      } catch (err) {
-        console.error(err);
-      }
-      setIsLoading(false);
-    };
-    
-    const timeout = setTimeout(fetchCharities, 300);
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+
     return () => clearTimeout(timeout);
-  }, [search, page]);
+  }, [search]);
+
+  const { data: charities = [], isFetching: isLoading } = useGetCharitiesQuery({
+    search: debouncedSearch,
+    page,
+    limit: 9,
+  });
 
   return (
     <div className="min-h-screen bg-zinc-50 pt-32 pb-24">
@@ -36,7 +33,7 @@ export default function CharitiesPage() {
         <p className="text-lg text-zinc-600 mb-12">Discover and support incredible organizations making a real impact.</p>
 
         <div className="relative max-w-md mb-12">
-          <Input 
+          <Input
             placeholder="Search charities..." 
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -59,7 +56,7 @@ export default function CharitiesPage() {
                       <div className="absolute top-4 left-4 bg-violet-600 text-white text-xs font-bold px-3 py-1 rounded-full z-10">FEATURED</div>
                     )}
                     {charity.imageUrl ? (
-                      <img src={charity.imageUrl} alt={charity.name} className="w-full h-full object-cover" />
+                      <img src={charity.imageUrl} alt={charity.name} loading="lazy" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-zinc-400">No Image</div>
                     )}
