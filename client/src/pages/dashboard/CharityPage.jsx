@@ -27,7 +27,7 @@ export default function CharityPage() {
         charityPercentage: pct,
         selectedCharity: user?.selectedCharity?._id || user?.selectedCharity,
       }).unwrap();
-      dispatch(updateUser(result.user));
+      dispatch(updateUser(result.user || result));
       toast.success('Charity settings saved');
     } catch {
       toast.error('Failed to save');
@@ -40,7 +40,7 @@ export default function CharityPage() {
         selectedCharity: charity._id,
         charityPercentage: pct,
       }).unwrap();
-      dispatch(updateUser(result.user));
+      dispatch(updateUser(result.user || result));
       setShowModal(false);
       toast.success(`Supporting ${charity.name}`);
     } catch {
