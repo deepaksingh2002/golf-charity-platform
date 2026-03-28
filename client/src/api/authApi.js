@@ -2,53 +2,47 @@ import { baseApi } from './baseApi';
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-
-    register: builder.mutation({
-      query: (credentials) => ({
-        url: '/auth/register',
-        method: 'POST',
-        body: credentials,
-      }),
-    }),
-
     login: builder.mutation({
-      query: (credentials) => ({
+      query: (body) => ({
         url: '/auth/login',
         method: 'POST',
-        body: credentials,
+        body,
       }),
     }),
-
+    register: builder.mutation({
+      query: (body) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body,
+      }),
+    }),
     getMe: builder.query({
       query: () => '/auth/me',
       providesTags: ['User'],
     }),
-
     updateProfile: builder.mutation({
-      query: (data) => ({
+      query: (body) => ({
         url: '/auth/profile',
         method: 'PUT',
-        body: data,
+        body,
       }),
       invalidatesTags: ['User'],
     }),
-
     changePassword: builder.mutation({
-      query: (data) => ({
+      query: (body) => ({
         url: '/auth/change-password',
         method: 'PUT',
-        body: data,
+        body,
       }),
     }),
-
   }),
-  overrideExisting: false,
 });
 
 export const {
-  useRegisterMutation,
-  useLoginMutation,
-  useGetMeQuery,
-  useUpdateProfileMutation,
   useChangePasswordMutation,
+  useGetMeQuery,
+  useLazyGetMeQuery,
+  useLoginMutation,
+  useRegisterMutation,
+  useUpdateProfileMutation,
 } = authApi;
