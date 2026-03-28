@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
+import { baseApi } from '../../api/baseApi';
 import { logout, selectCurrentUser } from '../../store/authSlice';
 
 export default function DashboardLayout() {
@@ -11,7 +12,11 @@ export default function DashboardLayout() {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
 
-  const handleLogout = () => { dispatch(logout()); navigate('/login'); };
+  const handleLogout = () => {
+    dispatch(logout());
+    dispatch(baseApi.util.resetApiState());
+    navigate('/login');
+  };
 
   const navItems = [
     { name: 'Overview', path: '/dashboard', icon: <LayoutDashboard size={20} /> },

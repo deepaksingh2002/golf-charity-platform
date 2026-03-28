@@ -1,12 +1,12 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
+import { AdminRoute, ProtectedRoute } from '../components/ProtectedRoute';
 import { Spinner } from '../components/ui/Spinner';
 import { useGetMeQuery } from '../api/auth.api';
 import { logout, selectCurrentToken, selectCurrentUser, updateUser } from '../store/authSlice';
-import { AdminRoute } from './AdminRoute';
 
 // Public Pages
 const HomePage = lazy(() => import('../pages/public/HomePage'));
@@ -34,14 +34,6 @@ const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage'));
 const AdminDrawsPage = lazy(() => import('../pages/admin/AdminDrawsPage'));
 const AdminCharitiesPage = lazy(() => import('../pages/admin/AdminCharitiesPage'));
 const AdminWinnersPage = lazy(() => import('../pages/admin/AdminWinnersPage'));
-
-const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const user = useSelector(selectCurrentUser);
-  const token = useSelector(selectCurrentToken);
-  if (!token) return <Navigate to="/login" replace />;
-  if (requireAdmin && user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
-  return children;
-};
 
 const PageTransition = ({ children }) => {
   const location = useLocation();
