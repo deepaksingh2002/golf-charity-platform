@@ -2,45 +2,39 @@ import { baseApi } from './baseApi';
 
 export const scoreApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-
     getScores: builder.query({
       query: () => '/scores',
-      providesTags: ['Scores'],
+      providesTags: ['Scores', 'User'],
     }),
-
     addScore: builder.mutation({
-      query: (data) => ({
+      query: (body) => ({
         url: '/scores',
         method: 'POST',
-        body: data,
+        body,
       }),
-      invalidatesTags: ['Scores'],
+      invalidatesTags: ['Scores', 'User', 'Draw'],
     }),
-
     updateScore: builder.mutation({
-      query: ({ scoreId, ...data }) => ({
+      query: ({ scoreId, ...body }) => ({
         url: `/scores/${scoreId}`,
         method: 'PUT',
-        body: data,
+        body,
       }),
-      invalidatesTags: ['Scores'],
+      invalidatesTags: ['Scores', 'User', 'Draw'],
     }),
-
     deleteScore: builder.mutation({
-      query: (scoreId) => ({
-        url: `/scores/${scoreId}`,
+      query: (id) => ({
+        url: `/scores/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Scores'],
+      invalidatesTags: ['Scores', 'User', 'Draw'],
     }),
-
   }),
-  overrideExisting: false,
 });
 
 export const {
-  useGetScoresQuery,
   useAddScoreMutation,
-  useUpdateScoreMutation,
   useDeleteScoreMutation,
+  useGetScoresQuery,
+  useUpdateScoreMutation,
 } = scoreApi;

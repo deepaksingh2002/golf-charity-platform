@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Calendar, Globe } from 'lucide-react';
-import { useGetCharityQuery } from '../../api/charity.api';
+import { useGetCharityQuery } from '../../api/charityApi';
 import { selectCurrentUser } from '../../store/authSlice';
 
 export default function CharityDetailPage() {

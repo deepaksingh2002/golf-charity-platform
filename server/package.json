@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "create:admin": "node scripts/createAdmin.js",
+    "seed:charities": "node scripts/seedCharities.js",
+    "repair:prod": "npm run create:admin && npm run seed:charities",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

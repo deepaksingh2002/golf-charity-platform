@@ -11,8 +11,8 @@ import {
   useCancelSubscriptionMutation,
   useGetSubscriptionStatusQuery,
   useSubscribeMutation,
-} from '../../api/subscription.api';
-import { useLazyGetMeQuery } from '../../api/auth.api';
+} from '../../api/subscriptionApi';
+import { useLazyGetMeQuery } from '../../api/authApi';
 import { selectCurrentUser, updateUser } from '../../store/authSlice';
 
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY

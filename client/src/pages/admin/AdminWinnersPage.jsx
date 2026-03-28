@@ -6,7 +6,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Spinner } from '../../components/ui/Spinner';
 import { CheckCircle, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useGetAdminWinnersQuery, useVerifyWinnerMutation } from '../../api/admin.api';
+import { useGetAdminWinnersQuery, useVerifyWinnerMutation } from '../../api/adminApi';
 
 export default function AdminWinnersPage() {
   const [modalOpen, setModalOpen] = useState(false);

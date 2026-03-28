@@ -37,9 +37,13 @@ export const baseApi = createApi({
   tagTypes: [
     'User',
     'Scores',
+    'Charity',
     'Charities',
+    'Draw',
     'Draws',
     'Subscription',
+    'AdminDashboard',
+    'AdminUser',
     'AdminUsers',
     'AdminStats',
     'AdminWinners',

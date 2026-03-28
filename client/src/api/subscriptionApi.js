@@ -2,21 +2,18 @@ import { baseApi } from './baseApi';
 
 export const subscriptionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-
     getSubscriptionStatus: builder.query({
       query: () => '/subscriptions/status',
       providesTags: ['Subscription'],
     }),
-
     subscribe: builder.mutation({
-      query: (data) => ({
+      query: (payload) => ({
         url: '/subscriptions/subscribe',
         method: 'POST',
-        body: data,
+        body: typeof payload === 'string' ? { priceId: payload } : payload,
       }),
       invalidatesTags: ['Subscription', 'User'],
     }),
-
     cancelSubscription: builder.mutation({
       query: () => ({
         url: '/subscriptions/cancel',
@@ -24,13 +21,11 @@ export const subscriptionApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Subscription', 'User'],
     }),
-
   }),
-  overrideExisting: false,
 });
 
 export const {
+  useCancelSubscriptionMutation,
   useGetSubscriptionStatusQuery,
   useSubscribeMutation,
-  useCancelSubscriptionMutation,
 } = subscriptionApi;

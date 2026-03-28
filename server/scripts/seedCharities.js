@@ -11,9 +11,14 @@ const charities = [
 const run = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    await Charity.deleteMany({});
-    await Charity.insertMany(charities);
-    console.log('Charities seeded');
+    for (const charity of charities) {
+      await Charity.findOneAndUpdate(
+        { name: charity.name },
+        { $set: charity },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+    console.log('Charities seeded or updated');
   } catch (err) {
     console.error(err);
   } finally {

@@ -11,8 +11,8 @@ import {
   useDeleteCharityMutation,
   useToggleFeaturedCharityMutation,
   useUpdateCharityMutation,
-} from '../../api/admin.api';
-import { useGetCharitiesQuery } from '../../api/charity.api';
+} from '../../api/adminApi';
+import { useGetCharitiesQuery } from '../../api/charityApi';
 
 export default function AdminCharitiesPage() {
   const [modalOpen, setModalOpen] = useState(false);
