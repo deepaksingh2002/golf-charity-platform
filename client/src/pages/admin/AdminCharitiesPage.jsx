@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { adminApi } from '../../api/admin.api';
-import { charityApi } from '../../api/charity.api';
+import React, { useState } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -8,29 +6,29 @@ import { Modal } from '../../components/ui/Modal';
 import { Spinner } from '../../components/ui/Spinner';
 import { Trash2, Edit, Plus, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  useCreateCharityMutation,
+  useDeleteCharityMutation,
+  useToggleFeaturedCharityMutation,
+  useUpdateCharityMutation,
+} from '../../api/admin.api';
+import { useGetCharitiesQuery } from '../../api/charity.api';
 
 export default function AdminCharitiesPage() {
-  const [charities, setCharities] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', website: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-
-  const fetchCharities = () => {
-    setLoading(true);
-    charityApi.getCharities({ limit: 100 })
-      .then(res => { setCharities(res.data); setLoading(false); })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchCharities(); }, []);
+  const { data: charities = [], isFetching: loading } = useGetCharitiesQuery({ limit: 100 });
+  const [toggleFeaturedRequest] = useToggleFeaturedCharityMutation();
+  const [deleteCharityRequest] = useDeleteCharityMutation();
+  const [createCharityRequest] = useCreateCharityMutation();
+  const [updateCharityRequest] = useUpdateCharityMutation();
 
   const toggleFeatured = async (id) => {
     try {
-      await adminApi.toggleFeaturedCharity(id);
+      await toggleFeaturedRequest(id).unwrap();
       toast.success('Featured status toggled');
-      fetchCharities();
     } catch (err) {
       toast.error('Failed to toggle');
     }
@@ -39,9 +37,8 @@ export default function AdminCharitiesPage() {
   const handleDelete = async (id) => {
     if(!window.confirm('Soft delete this charity?')) return;
     try {
-      await adminApi.deleteCharity(id);
+      await deleteCharityRequest(id).unwrap();
       toast.success('Charity deleted');
-      fetchCharities();
     } catch (err) {
       toast.error('Failed to delete');
     }
@@ -51,17 +48,16 @@ export default function AdminCharitiesPage() {
     e.preventDefault();
     try {
       if (isEditing && editingId) {
-        await adminApi.updateCharity(editingId, formData);
+        await updateCharityRequest({ id: editingId, ...formData }).unwrap();
         toast.success('Charity updated');
       } else {
-        await adminApi.createCharity(formData);
+        await createCharityRequest(formData).unwrap();
         toast.success('Charity created');
       }
       setModalOpen(false);
       setFormData({ name: '', description: '', website: '' });
       setIsEditing(false);
       setEditingId(null);
-      fetchCharities();
     } catch (err) {
       toast.error(isEditing ? 'Update failed' : 'Creation failed');
     }

@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { adminApi } from '../../api/admin.api';
+import React, { useState } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -7,28 +6,20 @@ import { Modal } from '../../components/ui/Modal';
 import { Spinner } from '../../components/ui/Spinner';
 import { CheckCircle, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useGetAdminWinnersQuery, useVerifyWinnerMutation } from '../../api/admin.api';
 
 export default function AdminWinnersPage() {
-  const [winners, setWinners] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProof, setSelectedProof] = useState(null);
-
-  const fetchWinners = () => {
-    setLoading(true);
-    adminApi.getWinners({ limit: 50 })
-      .then(res => { setWinners(res.data.winners || res.data || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchWinners(); }, []);
+  const { data, isFetching: loading } = useGetAdminWinnersQuery({ limit: 50 });
+  const [verifyWinnerRequest] = useVerifyWinnerMutation();
+  const winners = data?.winners || data || [];
 
   const verifyWinner = async (drawId, winnerId) => {
     if(!window.confirm('Mark this winner as verified & paid?')) return;
     try {
-      await adminApi.verifyWinner(drawId, winnerId);
+      await verifyWinnerRequest({ drawId, winnerId }).unwrap();
       toast.success('Winner verified');
-      fetchWinners();
       setModalOpen(false);
     } catch (err) {
       toast.error('Verification failed');

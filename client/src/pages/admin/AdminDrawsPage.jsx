@@ -1,45 +1,48 @@
 import React, { useEffect, useState } from 'react';
-import { adminApi } from '../../api/admin.api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
+import {
+  useCreateDrawMutation,
+  usePublishDrawMutation,
+  useSimulateDrawMutation,
+} from '../../api/admin.api';
+import { useGetCurrentDrawQuery } from '../../api/draw.api';
 
 export default function AdminDrawsPage() {
-  const [currentDraw, setCurrentDraw] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [simulation, setSimulation] = useState(null);
   const [error, setError] = useState('');
+  const { data, isFetching: loading, error: queryError, refetch } = useGetCurrentDrawQuery();
+  const [createDraw] = useCreateDrawMutation();
+  const [simulateDraw] = useSimulateDrawMutation();
+  const [publishDraw] = usePublishDrawMutation();
+  const currentDraw = data?.draw || null;
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await adminApi.getCurrentDraw();
-      setCurrentDraw(res.data?.draw || null);
-      setSimulation(res.data?.draw?.status === 'simulated' ? res.data.draw : null);
-      setError('');
-    } catch (err) {
-      if (err.response?.status === 404) {
-        setCurrentDraw(null);
-        setSimulation(null);
-        setError('');
-      } else {
-        setError(err.response?.data?.message || 'Failed to load current draw.');
-      }
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (currentDraw?.status === 'simulated') {
+      setSimulation(currentDraw);
+    } else if (!processing) {
+      setSimulation(null);
     }
-  };
+  }, [currentDraw, processing]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (!queryError || queryError.status === 404) {
+      setError('');
+      return;
+    }
+
+    setError(queryError?.data?.message || 'Failed to load current draw.');
+  }, [queryError]);
 
   const handleCreateDraw = async () => {
     setProcessing(true);
     try {
-      await adminApi.createDraw({ forced: true });
+      await createDraw({ forced: true }).unwrap();
       toast.success('Draw doc forced creation');
-      await fetchData();
+      await refetch();
     } catch (err) {
       toast.error('Draw creation failed or already exists');
     } finally {
@@ -50,9 +53,8 @@ export default function AdminDrawsPage() {
   const runSimulation = async () => {
     setProcessing(true);
     try {
-      const res = await adminApi.simulateDraw('current'); 
-      setCurrentDraw(res.data);
-      setSimulation(res.data);
+      const res = await simulateDraw('current').unwrap();
+      setSimulation(res);
       toast.success('Simulation complete');
     } catch (err) {
       toast.error('Simulation failed');
@@ -65,10 +67,10 @@ export default function AdminDrawsPage() {
     if(!window.confirm('Are you sure you want to PUBLISH this draw? This cannot be undone.')) return;
     setProcessing(true);
     try {
-      await adminApi.publishDraw('current');
+      await publishDraw('current').unwrap();
       toast.success('Draw published successfully!');
       setSimulation(null);
-      await fetchData();
+      await refetch();
     } catch (err) {
       toast.error('Failed to publish');
     } finally {
