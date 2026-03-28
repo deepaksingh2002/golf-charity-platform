@@ -1,128 +1,88 @@
-import React from 'react';
 import { useSelector } from 'react-redux';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Spinner } from '../../components/ui/Spinner';
-import { useGetCurrentDrawQuery, useGetPublishedDrawsQuery } from '../../api/draw.api';
 import { selectCurrentUser } from '../../store/authSlice';
+import { useGetPublishedDrawsQuery } from '../../api/drawApi';
+import { useGetScoresQuery } from '../../api/scoreApi';
+
+const DrawnBall = ({ number, matched }) => (
+  <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm
+    ${matched ? 'bg-emerald-500 text-white ring-2 ring-emerald-300' : 'bg-zinc-700 text-zinc-300'}`}>
+    {number}
+  </div>
+);
 
 export default function DrawPage() {
   const user = useSelector(selectCurrentUser);
-  const { data: currentDraw, isFetching: currentDrawLoading } = useGetCurrentDrawQuery();
-  const { data: publishedDraws = [], isFetching: publishedDrawsLoading } = useGetPublishedDrawsQuery();
-  const isLoading = currentDrawLoading || publishedDrawsLoading;
+  const { data: drawData, isLoading: drawLoading } = useGetPublishedDrawsQuery();
+  const { data: scoreData } = useGetScoresQuery();
 
-  if (isLoading) return <div className="flex justify-center p-12"><Spinner /></div>;
+  const draws = drawData?.draws || [];
+  const userScoreValues = (scoreData?.scores || []).map(s => s.value);
 
-  const isEligible = currentDraw?.userParticipationStatus?.isEligible;
-  const userScores = user?.scores?.map(s => s.value) || [];
+  if (drawLoading) return <div className="p-6 text-zinc-400">Loading draws...</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Draw Results</h1>
-        <p className="text-zinc-500 mt-1">Track current draws and see whether you match the winning numbers.</p>
+        <h1 className="text-2xl font-semibold text-white">Draw history</h1>
+        <p className="text-zinc-400 text-sm mt-1">Monthly draw results and your matches</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="border-violet-200 bg-violet-50/30">
-          <CardHeader>
-            <CardTitle>Current Month Draw</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {currentDraw?.draw ? (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-medium text-zinc-500">Prize Pool Setup</h3>
-                  <div className="text-3xl font-extrabold text-violet-700 mt-1">
-                    ${currentDraw.draw.prizePool?.total?.toLocaleString() || 0}
+      {userScoreValues.length > 0 && (
+        <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Your current entries</p>
+          <div className="flex gap-2 flex-wrap">
+            {userScoreValues.map((v, i) => (
+              <div key={i} className="w-11 h-11 rounded-full bg-violet-600 flex items-center justify-center font-bold text-white text-sm">
+                {v}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {draws.length === 0 ? (
+        <div className="bg-zinc-900 rounded-xl p-10 border border-zinc-800 text-center">
+          <p className="text-zinc-500">No draws published yet. Check back soon!</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {draws.map(draw => {
+            const matches = userScoreValues.filter(v => draw.drawnNumbers?.includes(v));
+            return (
+              <div key={draw._id} className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-white font-medium">{draw.month}</p>
+                    <p className="text-zinc-500 text-xs">{draw.participantCount} participants</p>
                   </div>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100 flex items-center justify-between">
-                  <span className="font-medium text-zinc-700">Participation Status</span>
-                  {isEligible ? (
-                     <Badge variant="active">Eligible for Draw</Badge>
-                  ) : (
-                     <Badge variant="pending">Not Eligible</Badge>
+                  {matches.length >= 3 && (
+                    <span className="px-3 py-1 bg-emerald-900 text-emerald-400 rounded-full text-xs font-medium">
+                      {matches.length}-number match!
+                    </span>
                   )}
                 </div>
-                {!isEligible && (
-                  <p className="text-xs text-rose-600">You must have an active subscription and exactly 5 scores entered to participate.</p>
-                )}
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  {draw.drawnNumbers?.map(n => (
+                    <DrawnBall key={n} number={n} matched={userScoreValues.includes(n)} />
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-zinc-800">
+                  {[
+                    { label: '5-match jackpot', value: draw.prizePool?.fiveMatch },
+                    { label: '4-match prize', value: draw.prizePool?.fourMatch },
+                    { label: '3-match prize', value: draw.prizePool?.threeMatch },
+                  ].map(p => (
+                    <div key={p.label}>
+                      <p className="text-xs text-zinc-500">{p.label}</p>
+                      <p className="text-emerald-400 font-medium">£{(p.value || 0).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <p className="text-zinc-500">No active draw running currently.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Entry Card</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <p className="text-sm text-zinc-500 mt-[-8px] mb-4">Your current rolling 5 scores act as your draw numbers.</p>
-             {userScores.length === 5 ? (
-               <div className="flex justify-between items-center gap-2">
-                 {userScores.map((sc, i) => (
-                   <div key={i} className="w-12 h-12 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-lg border-2 border-brand-200">
-                     {sc}
-                   </div>
-                 ))}
-               </div>
-             ) : (
-               <div className="text-center p-6 border border-dashed border-zinc-300 rounded-lg">
-                 <p className="text-zinc-500 text-sm">
-                   Need 5 scores to form an entry. Currently have {userScores.length}.
-                 </p>
-               </div>
-             )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-12">
-        <h2 className="text-xl font-bold text-zinc-900 mb-4">History of Results</h2>
-        {publishedDraws.length > 0 ? (
-          <div className="space-y-4">
-            {publishedDraws.map(draw => {
-              const myWin = draw.winners?.find(w => {
-                const winnerUserId = w.userId?._id || w.userId;
-                return winnerUserId?.toString() === user?._id?.toString();
-              });
-              return (
-                <Card key={draw._id}>
-                  <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div>
-                      <h4 className="font-bold text-lg text-zinc-900">{draw.month} Draw</h4>
-                      <p className="text-sm text-zinc-500">Drawn on: {new Date(draw.publishedAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="flex gap-2">
-                       {draw.drawnNumbers.map((n, i) => (
-                         <div key={i} className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${userScores.includes(n) ? 'bg-violet-600 text-white' : 'bg-zinc-100 text-zinc-400'}`}>
-                           {n}
-                         </div>
-                       ))}
-                    </div>
-                    <div className="text-right min-w-[120px]">
-                      {myWin ? (
-                        <div className="flex flex-col items-end">
-                          <Badge variant="paid" className="mb-1">WINNER!</Badge>
-                          <span className="font-bold text-emerald-600">+${myWin.prizeAmount.toLocaleString()}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-zinc-400 font-medium">No match</span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-zinc-500 italic">No published draws yet.</p>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
