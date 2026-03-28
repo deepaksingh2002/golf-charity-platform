@@ -1,43 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { authApi } from '../../api/auth.api';
-import { charityApi } from '../../api/charity.api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
+import { useGetCharitiesQuery, useGetMeQuery, useUpdateProfileMutation } from '../../services/apiSlice';
 
 export default function CharityPage() {
   const { user, setUser } = useAuthStore();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
   const [modalOpen, setModalOpen] = useState(false);
-  const [charities, setCharities] = useState([]);
   const [percentage, setPercentage] = useState(user?.charityPercentage || 10);
+  const {
+    data: profile = user,
+    isFetching: loading,
+  } = useGetMeQuery(undefined, {
+    skip: !user && !useAuthStore.getState().token,
+  });
+  const { data: charities = [] } = useGetCharitiesQuery({ limit: 50 });
+  const [updateProfile] = useUpdateProfileMutation();
 
   useEffect(() => {
-    fetchProfile();
-    charityApi.getCharities({ limit: 50 }).then(res => setCharities(res.data)).catch(console.error);
-  }, []);
-
-  const fetchProfile = () => {
-    authApi.getMe().then(res => {
-      setProfile(res.data);
-      setUser(res.data);
-      setPercentage(res.data.charityPercentage || 10);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  };
+    if (profile) {
+      setUser(profile);
+      setPercentage(profile.charityPercentage || 10);
+    }
+  }, [profile, setUser]);
 
   const savePercentage = async () => {
     setSaving(true);
     try {
-      await authApi.updateProfile({ charityPercentage: Number(percentage) });
+      await updateProfile({ charityPercentage: Number(percentage) }).unwrap();
       toast.success('Contribution updated');
-      fetchProfile();
     } catch (err) {
       toast.error('Failed to update');
     } finally {
@@ -47,10 +42,9 @@ export default function CharityPage() {
 
   const changeCharity = async (id) => {
     try {
-      await authApi.updateProfile({ selectedCharity: id });
+      await updateProfile({ selectedCharity: id }).unwrap();
       toast.success('Charity selected!');
       setModalOpen(false);
-      fetchProfile();
     } catch (err) {
       toast.error('Update failed');
     }
