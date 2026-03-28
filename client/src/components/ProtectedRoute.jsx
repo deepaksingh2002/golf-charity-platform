@@ -2,6 +2,17 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectIsAuthenticated, selectIsAdmin } from '../store/authSlice';
 
+export function GuestRoute({ children }) {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isAdmin = useSelector(selectIsAdmin);
+
+  if (isAuthenticated) {
+    return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
+  }
+
+  return children;
+}
+
 export function ProtectedRoute({ children }) {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const location = useLocation();
