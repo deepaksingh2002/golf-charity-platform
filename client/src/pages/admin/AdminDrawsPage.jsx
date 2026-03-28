@@ -7,8 +7,8 @@ import {
   useCreateDrawMutation,
   usePublishDrawMutation,
   useSimulateDrawMutation,
-} from '../../api/admin.api';
-import { useGetCurrentDrawQuery } from '../../api/draw.api';
+} from '../../api/adminApi';
+import { useGetCurrentDrawQuery } from '../../api/drawApi';
 
 export default function AdminDrawsPage() {
   const [processing, setProcessing] = useState(false);
