@@ -1,82 +1,89 @@
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import React, { useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Calendar, Globe } from 'lucide-react';
-import { useGetCharityQuery } from '../../api/charityApi';
-import { selectCurrentUser } from '../../store/authSlice';
+import { Link, useParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
+import {
+  fetchCharityById,
+  selectCharitiesLoading,
+  selectSelectedCharity,
+} from '../../store/slices/charitySlice';
 
 export default function CharityDetailPage() {
   const { id } = useParams();
-  const user = useSelector(selectCurrentUser);
-  const { data: charity, isFetching: isLoading } = useGetCharityQuery(id, {
-    skip: !id,
-  });
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
+  const charity = useSelector(selectSelectedCharity);
+  const loading = useSelector(selectCharitiesLoading);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Spinner size="lg" /></div>;
-  if (!charity) return <div className="min-h-screen flex items-center justify-center text-zinc-500">Charity not found.</div>;
+  // deps: [dispatch, id] fetches the selected charity record from Redux whenever the route id changes.
+  useEffect(() => {
+    if (id) {
+      dispatch(fetchCharityById(id));
+    }
+  }, [dispatch, id]);
+
+  if (loading && !charity) {
+    return <div className="flex min-h-screen items-center justify-center"><Spinner size="lg" /></div>;
+  }
+
+  if (!charity) {
+    return <div className="flex min-h-screen items-center justify-center text-zinc-500">Charity not found.</div>;
+  }
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="relative h-[60vh] bg-zinc-900 flex flex-col justify-end">
+      <div className="relative flex h-[60vh] flex-col justify-end bg-zinc-900">
         <div className="absolute inset-0">
-          <img src={charity.imageUrl || 'https://images.unsplash.com/photo-1593113511475-680f4f9547d5?w=1600'} alt={charity.name} className="w-full h-full object-cover opacity-50" />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent"></div>
+          <img src={charity?.imageUrl || 'https://images.unsplash.com/photo-1593113511475-680f4f9547d5?w=1600'} alt={charity?.name ?? 'Charity hero'} className="h-full w-full object-cover opacity-50" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-6 pb-16 w-full">
-          {charity.isFeatured && <span className="inline-block bg-violet-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-4">FEATURED PARTNER</span>}
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">{charity.name}</h1>
+        <div className="relative mx-auto w-full max-w-7xl px-6 pb-16">
+          {charity?.isFeatured ? <span className="mb-4 inline-block rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">FEATURED PARTNER</span> : null}
+          <h1 className="mb-4 text-4xl font-bold text-white md:text-6xl">{charity?.name ?? 'Unknown charity'}</h1>
           <div className="flex items-center space-x-6 text-zinc-300">
-            <span className="flex items-center"><Globe className="w-4 h-4 mr-2"/> {charity.website || 'No website listed'}</span>
-            <span className="font-semibold text-emerald-400">${charity.totalReceived?.toLocaleString()} Raised</span>
+            <span className="flex items-center"><Globe className="mr-2 h-4 w-4" /> {charity?.website ?? 'No website listed'}</span>
+            <span className="font-semibold text-emerald-400">${(charity?.totalReceived ?? 0).toFixed(2)} Raised</span>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-3 gap-16">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-16 px-6 py-16 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <h2 className="text-2xl font-bold text-zinc-900 mb-6">About the cause</h2>
-          <div className="prose prose-lg text-zinc-600 max-w-none mb-12">
-            <p>{charity.description}</p>
+          <h2 className="mb-6 text-2xl font-bold text-zinc-900">About the cause</h2>
+          <div className="prose prose-lg mb-12 max-w-none text-zinc-600">
+            <p>{charity?.description ?? 'No description available.'}</p>
           </div>
 
-          {charity.galleryImages && charity.galleryImages.length > 0 && (
+          {(charity?.upcomingEvents ?? []).length > 0 ? (
             <>
-              <h2 className="text-2xl font-bold text-zinc-900 mb-6">Gallery</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-12">
-                {charity.galleryImages.map((img, i) => (
-                  <img key={i} src={img} alt="Gallery" loading="lazy" className="w-full h-32 object-cover rounded-xl" />
-                ))}
-              </div>
-            </>
-          )}
-
-          {charity.upcomingEvents && charity.upcomingEvents.length > 0 && (
-            <>
-              <h2 className="text-2xl font-bold text-zinc-900 mb-6">Upcoming Events</h2>
+              <h2 className="mb-6 text-2xl font-bold text-zinc-900">Upcoming Events</h2>
               <div className="space-y-4">
-                {charity.upcomingEvents.map((evt, i) => (
-                  <div key={i} className="p-6 border border-zinc-200 rounded-xl bg-zinc-50 flex items-start">
-                    <Calendar className="w-6 h-6 text-brand-600 mr-4 shrink-0" />
+                {(charity?.upcomingEvents ?? []).map((event) => (
+                  <div key={`${event?.title ?? 'event'}-${event?.date ?? 'date'}`} className="flex items-start rounded-xl border border-zinc-200 bg-zinc-50 p-6">
+                    <Calendar className="mr-4 h-6 w-6 shrink-0 text-brand-600" />
                     <div>
-                      <h3 className="font-semibold text-zinc-900 mb-1">{evt.title}</h3>
-                      <p className="text-sm text-brand-600 font-medium mb-2">{new Date(evt.date).toLocaleDateString()}</p>
-                      <p className="text-zinc-600">{evt.description}</p>
+                      <h3 className="mb-1 font-semibold text-zinc-900">{event?.title ?? 'Untitled event'}</h3>
+                      <p className="mb-2 text-sm font-medium text-brand-600">
+                        {event?.date ? new Date(event.date).toLocaleDateString('en-GB') : 'Date to be confirmed'}
+                      </p>
+                      <p className="text-zinc-600">{event?.description ?? 'No event description available.'}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </>
-          )}
+          ) : null}
         </div>
 
         <div className="lg:col-span-1">
-          <div className="sticky top-8 bg-zinc-50 border border-zinc-200 p-8 rounded-2xl text-center">
-            <h3 className="text-xl font-bold text-zinc-900 mb-2">Support {charity.name}</h3>
-            <p className="text-zinc-600 text-sm mb-6">By subscribing, you can direct a percentage of your monthly contribution straight to this charity.</p>
+          <div className="sticky top-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-8 text-center">
+            <h3 className="mb-2 text-xl font-bold text-zinc-900">Support {charity?.name ?? 'this charity'}</h3>
+            <p className="mb-6 text-sm text-zinc-600">By subscribing, you can direct a percentage of your monthly contribution straight to this charity.</p>
             {user ? (
-              <Button className="w-full" size="lg">Choose as my charity</Button>
+              <Link to="/dashboard/charity"><Button className="w-full" size="lg">Choose as my charity</Button></Link>
             ) : (
               <Link to="/register"><Button className="w-full" size="lg">Log in to support</Button></Link>
             )}

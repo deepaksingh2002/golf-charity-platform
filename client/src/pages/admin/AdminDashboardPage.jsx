@@ -1,46 +1,40 @@
-import { useGetDashboardStatsQuery } from '../../api/adminApi';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchAdminStats, selectAdminLoading, selectAdminStats } from '../../store/slices/adminSlice';
 
 export default function AdminDashboardPage() {
-  const { data, isLoading, isError, refetch } = useGetDashboardStatsQuery();
-  const stats = data || {};
+  const dispatch = useDispatch();
+  const stats = useSelector(selectAdminStats);
+  const loading = useSelector(selectAdminLoading);
+
+  // deps: [dispatch] fetches the admin dashboard metrics from Redux on mount.
+  useEffect(() => {
+    dispatch(fetchAdminStats());
+  }, [dispatch]);
+
+  if (loading) {
+    return <p className="p-6 text-sm text-zinc-500">Loading stats...</p>;
+  }
+
+  if (!stats) {
+    return <p className="p-6 text-sm text-zinc-500">No stats available</p>;
+  }
 
   const cards = [
-    { label: 'Total users', value: stats.totalUsers ?? '-', color: 'text-violet-400' },
-    { label: 'Active subscribers', value: stats.activeSubscribers ?? '-', color: 'text-emerald-400' },
-    { label: 'Total charities', value: stats.totalCharities ?? '-', color: 'text-teal-400' },
-    { label: 'Total draws', value: stats.totalDraws ?? stats.drawStats?.totalDraws ?? '-', color: 'text-amber-400' },
+    { label: 'Total users', value: stats?.totalUsers ?? 0 },
+    { label: 'Active subscribers', value: stats?.activeSubscribers ?? 0 },
+    { label: 'Total charities', value: stats?.totalCharities ?? 0 },
+    { label: 'Total draws', value: stats?.totalDraws ?? 0 },
   ];
 
-  if (isLoading) return (
-    <div className="p-6 flex items-center gap-3 text-zinc-400">
-      <div className="w-5 h-5 border-2 border-zinc-600 border-t-violet-500 rounded-full animate-spin" />
-      Loading stats...
-    </div>
-  );
-
-  if (isError) return (
-    <div className="p-6">
-      <p className="text-red-400 mb-4">Failed to load dashboard stats</p>
-      <button onClick={refetch} className="px-4 py-2 bg-zinc-800 text-white rounded-lg text-sm">
-        Retry
-      </button>
-    </div>
-  );
-
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Admin dashboard</h1>
-        <p className="text-zinc-500 text-sm mt-1">Platform overview and controls</p>
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((card) => (
-          <div key={card.label} className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{card.label}</p>
-            <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
-          </div>
-        ))}
-      </div>
+    <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map((card) => (
+        <div key={`admin-dashboard-${card.label}`} className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-zinc-500">{card.label}</p>
+          <p className="mt-2 text-3xl font-bold text-zinc-900">{card.value}</p>
+        </div>
+      ))}
     </div>
   );
 }

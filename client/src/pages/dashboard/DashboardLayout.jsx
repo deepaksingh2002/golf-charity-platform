@@ -4,17 +4,16 @@ import { useDispatch, useSelector } from 'react-redux';
 import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
-import { baseApi } from '../../api/baseApi';
-import { logout, selectCurrentUser } from '../../store/authSlice';
+import { logout, selectIsAdmin, selectUser } from '../../store/slices/authSlice';
 
 export default function DashboardLayout() {
   const dispatch = useDispatch();
-  const user = useSelector(selectCurrentUser);
+  const user = useSelector(selectUser);
+  const isAdmin = useSelector(selectIsAdmin);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     dispatch(logout());
-    dispatch(baseApi.util.resetApiState());
     navigate('/login');
   };
 
@@ -56,7 +55,7 @@ export default function DashboardLayout() {
         <header className="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-6 z-30 shrink-0">
           <div className="lg:hidden text-xl font-bold text-zinc-900 tracking-tight">Golf<span className="text-emerald-500">Charity</span></div>
           <div className="ml-auto flex items-center space-x-4">
-            {user?.role === 'admin' && (
+            {isAdmin && (
               <Link
                 to="/admin"
                 className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-100"
@@ -93,7 +92,7 @@ export default function DashboardLayout() {
               <span className="text-[10px] mt-1 font-medium">{item.name}</span>
             </NavLink>
          ))}
-         {user?.role === 'admin' && (
+         {isAdmin && (
             <Link
               to="/admin"
               className="flex flex-col items-center justify-center w-full py-1 text-violet-600"

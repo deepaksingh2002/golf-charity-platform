@@ -1,99 +1,92 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { useLoginMutation } from '../../api/authApi';
-import { setCredentials, selectIsAuthenticated, selectIsAdmin } from '../../store/authSlice';
 import toast from 'react-hot-toast';
-
-const schema = z.object({
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-});
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  clearAuthError,
+  loginUser,
+  selectAuthError,
+  selectAuthLoading,
+  selectIsAuthenticated,
+  selectIsAdmin,
+} from '../../store/slices/authSlice';
 
 export default function LoginPage() {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const loading = useSelector(selectAuthLoading);
+  const error = useSelector(selectAuthError);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const isAdmin = useSelector(selectIsAdmin);
+  const redirectPath = location.state?.from?.pathname;
+  const { register, handleSubmit, formState: { errors } } = useForm();
 
-  const [login, { isLoading }] = useLoginMutation();
+  // deps: [error, dispatch] surfaces auth failures once and then clears them from Redux state.
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearAuthError());
+    }
+  }, [error, dispatch]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(schema),
-  });
-
-  // Redirect if already logged in
+  // deps: [isAuthenticated, isAdmin, navigate, redirectPath] redirects successful sessions away from the login page.
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+      navigate(redirectPath || (isAdmin ? '/admin' : '/dashboard'), { replace: true });
     }
-  }, [isAuthenticated, isAdmin, navigate]);
+  }, [isAuthenticated, isAdmin, navigate, redirectPath]);
 
   const onSubmit = async (data) => {
-    try {
-      const result = await login(data).unwrap();
-      dispatch(setCredentials(result));
+    const result = await dispatch(loginUser(data));
+
+    if (loginUser.fulfilled.match(result)) {
+      const user = result.payload?.user ?? result.payload;
       toast.success('Welcome back!');
-      navigate(result.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
-    } catch (err) {
-      toast.error(err.data?.message || 'Invalid email or password');
+      navigate(redirectPath || (user?.role === 'admin' ? '/admin' : '/dashboard'), { replace: true });
     }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome back</h1>
+        <div className="mb-8 text-center">
+          <h1 className="mb-2 text-3xl font-bold text-white">Welcome back</h1>
           <p className="text-zinc-400">Sign in to your account</p>
         </div>
-        <div className="bg-zinc-900 rounded-2xl p-8 border border-zinc-800">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Email
-              </label>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-300">Email</label>
               <input
-                {...register('email')}
                 type="email"
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700
-                  text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500
-                  focus:ring-1 focus:ring-emerald-500 transition-colors"
+                {...register('email', { required: 'Email is required' })}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
-              {errors.email && (
-                <p className="mt-1.5 text-sm text-red-400">{errors.email.message}</p>
-              )}
+              {errors.email ? <p className="mt-1.5 text-sm text-red-400">{errors.email.message}</p> : null}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Password
-              </label>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-300">Password</label>
               <input
-                {...register('password')}
                 type="password"
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700
-                  text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500
-                  focus:ring-1 focus:ring-emerald-500 transition-colors"
+                placeholder="........"
+                {...register('password', { required: 'Password is required' })}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
-              {errors.password && (
-                <p className="mt-1.5 text-sm text-red-400">{errors.password.message}</p>
-              )}
+              {errors.password ? <p className="mt-1.5 text-sm text-red-400">{errors.password.message}</p> : null}
             </div>
+
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700
-                disabled:text-zinc-500 text-white font-medium rounded-xl transition-colors
-                min-h-[48px] flex items-center justify-center gap-2"
+              disabled={loading}
+              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500"
             >
-              {isLoading ? (
+              {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Signing in...
                 </>
               ) : 'Sign in'}
@@ -101,7 +94,7 @@ export default function LoginPage() {
           </form>
           <p className="mt-6 text-center text-sm text-zinc-500">
             No account?{' '}
-            <Link to="/register" className="text-emerald-400 hover:text-emerald-300 font-medium">
+            <Link to="/register" className="font-medium text-emerald-400 hover:text-emerald-300">
               Create one
             </Link>
           </p>

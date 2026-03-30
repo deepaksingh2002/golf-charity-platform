@@ -1,149 +1,154 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
-import { Modal } from '../../components/ui/Modal';
-import { Spinner } from '../../components/ui/Spinner';
-import { Trash2, Edit, Plus, Star } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useDispatch, useSelector } from 'react-redux';
 import {
-  useCreateCharityMutation,
-  useDeleteCharityMutation,
-  useToggleFeaturedCharityMutation,
-  useUpdateCharityMutation,
-} from '../../api/adminApi';
-import { useGetCharitiesQuery } from '../../api/charityApi';
+  clearCharityMessages,
+  createCharity,
+  deleteCharity,
+  fetchCharities,
+  selectCharities,
+  selectCharitiesError,
+  selectCharitiesLoading,
+  selectCharitiesSuccess,
+  toggleFeatured,
+  updateCharity,
+} from '../../store/slices/charitySlice';
 
 export default function AdminCharitiesPage() {
-  const [modalOpen, setModalOpen] = useState(false);
+  const dispatch = useDispatch();
+  const charities = useSelector(selectCharities);
+  const loading = useSelector(selectCharitiesLoading);
+  const error = useSelector(selectCharitiesError);
+  const success = useSelector(selectCharitiesSuccess);
   const [formData, setFormData] = useState({ name: '', description: '', website: '' });
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const { data: charities = [], isFetching: loading } = useGetCharitiesQuery({ limit: 100 });
-  const [toggleFeaturedRequest] = useToggleFeaturedCharityMutation();
-  const [deleteCharityRequest] = useDeleteCharityMutation();
-  const [createCharityRequest] = useCreateCharityMutation();
-  const [updateCharityRequest] = useUpdateCharityMutation();
+  const [editingId, setEditingId] = useState('');
 
-  const toggleFeatured = async (id) => {
-    try {
-      await toggleFeaturedRequest(id).unwrap();
-      toast.success('Featured status toggled');
-    } catch (err) {
-      toast.error('Failed to toggle');
+  // deps: [dispatch] loads the admin charity list from Redux on mount.
+  useEffect(() => {
+    dispatch(fetchCharities({ limit: 100 }));
+  }, [dispatch]);
+
+  // deps: [error, success, dispatch] displays admin charity messages and clears them after toast display.
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearCharityMessages());
     }
-  };
-
-  const handleDelete = async (id) => {
-    if(!window.confirm('Soft delete this charity?')) return;
-    try {
-      await deleteCharityRequest(id).unwrap();
-      toast.success('Charity deleted');
-    } catch (err) {
-      toast.error('Failed to delete');
+    if (success) {
+      toast.success(success);
+      dispatch(clearCharityMessages());
     }
-  };
+  }, [error, success, dispatch]);
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    try {
-      if (isEditing && editingId) {
-        await updateCharityRequest({ id: editingId, ...formData }).unwrap();
-        toast.success('Charity updated');
-      } else {
-        await createCharityRequest(formData).unwrap();
-        toast.success('Charity created');
-      }
-      setModalOpen(false);
-      setFormData({ name: '', description: '', website: '' });
-      setIsEditing(false);
-      setEditingId(null);
-    } catch (err) {
-      toast.error(isEditing ? 'Update failed' : 'Creation failed');
-    }
-  };
-
-  const openCreate = () => {
+  const resetForm = () => {
     setFormData({ name: '', description: '', website: '' });
-    setIsEditing(false);
-    setEditingId(null);
-    setModalOpen(true);
+    setEditingId('');
   };
 
-  const openEdit = (charity) => {
-    setFormData({ name: charity.name || '', description: charity.description || '', website: charity.website || '' });
-    setIsEditing(true);
-    setEditingId(charity._id);
-    setModalOpen(true);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (editingId) {
+      await dispatch(updateCharity({ charityId: editingId, data: formData }));
+    } else {
+      await dispatch(createCharity(formData));
+    }
+
+    dispatch(fetchCharities({ limit: 100 }));
+    resetForm();
+  };
+
+  const handleDelete = async (charityId) => {
+    if (!window.confirm('Delete this charity?')) {
+      return;
+    }
+
+    await dispatch(deleteCharity(charityId));
+    dispatch(fetchCharities({ limit: 100 }));
+  };
+
+  const handleToggleFeatured = async (charityId) => {
+    await dispatch(toggleFeatured(charityId));
+    dispatch(fetchCharities({ limit: 100 }));
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Charity Directory</h1>
-          <p className="text-zinc-500 mt-1">Manage partner charities, toggle feature status, and view metrics.</p>
+    <div className="space-y-6 p-6">
+      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h1 className="text-2xl font-semibold text-zinc-900">{editingId ? 'Edit charity' : 'Create charity'}</h1>
+        <input
+          type="text"
+          placeholder="Charity name"
+          value={formData.name}
+          onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
+          className="w-full rounded-lg border border-zinc-200 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+        <input
+          type="text"
+          placeholder="Website"
+          value={formData.website}
+          onChange={(event) => setFormData((current) => ({ ...current, website: event.target.value }))}
+          className="w-full rounded-lg border border-zinc-200 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+        <textarea
+          placeholder="Description"
+          value={formData.description}
+          onChange={(event) => setFormData((current) => ({ ...current, description: event.target.value }))}
+          className="min-h-[120px] w-full rounded-lg border border-zinc-200 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+        <div className="flex gap-3">
+          <button type="submit" className="rounded-lg bg-violet-600 px-5 py-2.5 font-medium text-white transition-colors hover:bg-violet-500">
+            {editingId ? 'Update charity' : 'Create charity'}
+          </button>
+          {editingId ? (
+            <button type="button" onClick={resetForm} className="rounded-lg border border-zinc-200 px-5 py-2.5 text-zinc-700">
+              Cancel
+            </button>
+          ) : null}
         </div>
-        <Button onClick={openCreate} className="flex items-center gap-2 cursor-pointer">
-           <Plus size={18} /> Add Charity
-        </Button>
+      </form>
+
+      {loading ? <p className="text-sm text-zinc-500">Loading charities...</p> : null}
+
+      <div className="space-y-3">
+        {(charities ?? []).map((charity) => (
+          <div key={charity?._id ?? charity?.name} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-zinc-900">{charity?.name ?? 'Unknown charity'}</p>
+                <p className="text-sm text-zinc-500">{charity?.website ?? 'No website listed'}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setEditingId(charity?._id ?? '');
+                    setFormData({
+                      name: charity?.name ?? '',
+                      description: charity?.description ?? '',
+                      website: charity?.website ?? '',
+                    });
+                  }}
+                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleToggleFeatured(charity?._id)}
+                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-700"
+                >
+                  {charity?.isFeatured ? 'Unfeature' : 'Feature'}
+                </button>
+                <button
+                  onClick={() => handleDelete(charity?._id)}
+                  className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
-
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-zinc-500 uppercase bg-zinc-50 border-b border-zinc-200">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Charity Name</th>
-                <th className="px-6 py-4 font-semibold">Total Raised</th>
-                <th className="px-6 py-4 font-semibold text-center">Featured</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200">
-              {loading ? (
-                <tr><td colSpan="4" className="py-12 text-center"><Spinner className="mx-auto" /></td></tr>
-              ) : charities.map(c => (
-                <tr key={c._id} className={`hover:bg-zinc-50 transition ${!c.isActive ? 'opacity-50' : ''}`}>
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-zinc-900">{c.name}</div>
-                    <div className="text-zinc-500 text-xs truncate max-w-[200px]">{c.website}</div>
-                  </td>
-                  <td className="px-6 py-4 font-bold text-emerald-600">${c.totalReceived?.toLocaleString() || 0}</td>
-                  <td className="px-6 py-4 text-center">
-                    <button onClick={() => toggleFeatured(c._id)} className={`p-2 rounded-full transition cursor-pointer ${c.isFeatured ? 'text-violet-600 bg-violet-100' : 'text-zinc-400 hover:bg-zinc-100'}`}>
-                       <Star size={18} fill={c.isFeatured ? 'currentColor' : 'none'} />
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <Button variant="ghost" size="sm" className="px-2 cursor-pointer" onClick={() => openEdit(c)}><Edit size={16}/></Button>
-                    <Button variant="ghost" size="sm" className="px-2 text-red-500 hover:bg-red-50 cursor-pointer" onClick={() => handleDelete(c._id)}><Trash2 size={16}/></Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={isEditing ? 'Edit Charity' : 'Create New Charity'}>
-        <form onSubmit={handleCreate} className="space-y-4">
-          <Input label="Charity Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-          <Input label="Website URL" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} />
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">Description</label>
-            <textarea 
-              className="flex w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[100px]"
-              value={formData.description}
-              onChange={e => setFormData({...formData, description: e.target.value})}
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full mt-4 cursor-pointer">{isEditing ? 'Update Charity' : 'Save Charity'}</Button>
-        </form>
-      </Modal>
     </div>
   );
 }

@@ -1,88 +1,77 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
-import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
-import { useGetCharitiesQuery } from '../../api/charityApi';
+import { fetchCharities, selectCharities, selectCharitiesLoading } from '../../store/slices/charitySlice';
 
 export default function CharitiesPage() {
+  const dispatch = useDispatch();
+  const charities = useSelector(selectCharities);
+  const loading = useSelector(selectCharitiesLoading);
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [page, setPage] = useState(1);
 
+  // deps: [dispatch, search] reloads the public charity directory whenever the search term changes.
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setDebouncedSearch(search);
+      dispatch(fetchCharities({ searchQuery: search, limit: 100 }));
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [search]);
-
-  const { data: charities = [], isFetching: isLoading } = useGetCharitiesQuery({
-    search: debouncedSearch,
-    page,
-    limit: 9,
-  });
+  }, [dispatch, search]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 pt-32 pb-24">
-      <div className="max-w-7xl mx-auto px-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-zinc-900 mb-4">Our Partners</h1>
-        <p className="text-lg text-zinc-600 mb-12">Discover and support incredible organizations making a real impact.</p>
+    <div className="min-h-screen bg-zinc-50 pb-24 pt-32">
+      <div className="mx-auto max-w-7xl px-6">
+        <h1 className="mb-4 text-4xl font-bold text-zinc-900 md:text-5xl">Our Partners</h1>
+        <p className="mb-12 text-lg text-zinc-600">Discover and support incredible organizations making a real impact.</p>
 
-        <div className="relative max-w-md mb-12">
+        <div className="relative mb-12 max-w-md">
           <Input
-            placeholder="Search charities..." 
+            placeholder="Search charities..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(event) => setSearch(event.target.value)}
             className="pl-10"
           />
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-zinc-400" />
         </div>
 
-        {isLoading ? (
+        {loading ? (
           <div className="flex justify-center py-20"><Spinner size="lg" /></div>
-        ) : charities.length === 0 ? (
-          <div className="text-center py-20 text-zinc-500">No charities found matching your search.</div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {charities.map(charity => (
-                <Card key={charity._id} className="overflow-hidden flex flex-col hover:border-brand-200 transition-colors">
-                  <div className="h-48 bg-zinc-200 overflow-hidden relative">
-                    {charity.isFeatured && (
-                      <div className="absolute top-4 left-4 bg-violet-600 text-white text-xs font-bold px-3 py-1 rounded-full z-10">FEATURED</div>
-                    )}
-                    {charity.imageUrl ? (
-                      <img src={charity.imageUrl} alt={charity.name} loading="lazy" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-400">No Image</div>
-                    )}
-                  </div>
-                  <CardContent className="flex-1 p-6 flex flex-col">
-                    <h3 className="text-xl font-bold text-zinc-900 mb-2">{charity.name}</h3>
-                    <p className="text-zinc-600 text-sm mb-6 line-clamp-3 flex-1">{charity.description}</p>
-                    <div className="pt-4 border-t border-zinc-100 flex items-center justify-between mt-auto">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Total Raised</span>
-                        <span className="text-lg font-bold text-emerald-600">${charity.totalReceived?.toLocaleString() || '0'}</span>
-                      </div>
-                      <Link to={`/charities/${charity._id}`} className="text-sm font-semibold text-zinc-900 hover:text-brand-600 transition">
-                        View Details →
-                      </Link>
+        ) : (charities ?? []).length > 0 ? (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {(charities ?? []).map((charity) => (
+              <Card key={charity?._id ?? charity?.name} className="flex flex-col overflow-hidden transition-colors hover:border-brand-200">
+                <div className="relative h-48 overflow-hidden bg-zinc-200">
+                  {charity?.isFeatured ? (
+                    <div className="absolute left-4 top-4 z-10 rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">FEATURED</div>
+                  ) : null}
+                  {charity?.imageUrl ? (
+                    <img src={charity.imageUrl} alt={charity?.name ?? 'Charity image'} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-zinc-400">No Image</div>
+                  )}
+                </div>
+                <CardContent className="flex flex-1 flex-col p-6">
+                  <h3 className="mb-2 text-xl font-bold text-zinc-900">{charity?.name ?? 'Unknown charity'}</h3>
+                  <p className="mb-6 flex-1 line-clamp-3 text-sm text-zinc-600">{charity?.description ?? 'No description available'}</p>
+                  <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-4">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">Total Raised</span>
+                      <span className="text-lg font-bold text-emerald-600">${(charity?.totalReceived ?? 0).toFixed(2)}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            {charities.length === 9 && (
-              <div className="mt-12">
-                <Pagination currentPage={page} totalPages={page + 1} onPageChange={setPage} />
-              </div>
-            )}
-          </>
+                    <Link to={`/charities/${charity?._id ?? ''}`} className="text-sm font-semibold text-zinc-900 transition hover:text-brand-600">
+                      View Details
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="py-20 text-center text-zinc-500">No charities found matching your search.</div>
         )}
       </div>
     </div>

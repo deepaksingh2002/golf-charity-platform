@@ -1,90 +1,49 @@
-import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../../store/authSlice';
-import { useGetSubscriptionStatusQuery } from '../../api/subscriptionApi';
-import { useGetPublishedDrawsQuery } from '../../api/drawApi';
-import { useGetScoresQuery } from '../../api/scoreApi';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchCurrentUser, selectUser } from '../../store/slices/authSlice';
+import { fetchScores, selectScores } from '../../store/slices/scoreSlice';
+import {
+  fetchSubscriptionStatus,
+  selectSubscriptionStatus,
+  selectSubscriptionRenewDate,
+} from '../../store/slices/subscriptionSlice';
 
 export default function DashboardOverviewPage() {
-  const user = useSelector(selectCurrentUser);
-  const { data: subData } = useGetSubscriptionStatusQuery();
-  const { data: drawData } = useGetPublishedDrawsQuery();
-  const { data: scoreData } = useGetScoresQuery();
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
+  const scores = useSelector(selectScores);
+  const subStatus = useSelector(selectSubscriptionStatus);
+  const renewDate = useSelector(selectSubscriptionRenewDate);
 
-  const subscription = subData?.subscription;
-  const latestDraw = drawData?.draws?.[0];
-  const scores = scoreData?.scores || [];
+  // deps: [dispatch] loads the dashboard's three core data domains from Redux on first render.
+  useEffect(() => {
+    dispatch(fetchCurrentUser());
+    dispatch(fetchScores());
+    dispatch(fetchSubscriptionStatus());
+  }, [dispatch]);
 
-  const stats = [
-    {
-      label: 'Subscription',
-      value: subscription?.status || user?.subscriptionStatus || 'inactive',
-      color: subscription?.status === 'active' ? 'text-emerald-400' : 'text-zinc-400',
-    },
-    {
-      label: 'Scores entered',
-      value: scores.length + ' / 5',
-      color: 'text-violet-400',
-    },
-    {
-      label: 'Total winnings',
-      value: '£' + (user?.totalWinnings || 0).toLocaleString(),
-      color: 'text-amber-400',
-    },
-    {
-      label: 'Charity contribution',
-      value: (user?.charityPercentage || 10) + '%',
-      color: 'text-teal-400',
-    },
+  const cards = [
+    { label: 'Subscription', value: subStatus ?? user?.subscriptionStatus ?? 'inactive', color: 'text-emerald-400' },
+    { label: 'Scores entered', value: `${scores?.length ?? 0} / 5`, color: 'text-violet-400' },
+    { label: 'Total winnings', value: `GBP ${(user?.totalWinnings ?? 0).toFixed(2)}`, color: 'text-amber-400' },
+    { label: 'Charity contribution', value: `${user?.charityPercentage ?? 10}%`, color: 'text-teal-400' },
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">
-          Welcome back, {user?.name?.split(' ')[0] || 'Player'}
-        </h1>
-        <p className="text-zinc-400 mt-1 text-sm">Here's your platform overview</p>
+        <h1 className="text-2xl font-semibold text-zinc-900">Welcome, {user?.name ?? 'Player'}</h1>
+        <p className="mt-1 text-sm text-zinc-500">Subscription renews: {renewDate ? new Date(renewDate).toLocaleDateString('en-GB') : 'No renewal date'}</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(s => (
-          <div key={s.label} className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{s.label}</p>
-            <p className={`text-xl font-semibold capitalize ${s.color}`}>{s.value}</p>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {cards.map((card) => (
+          <div key={`overview-card-${card.label}`} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">{card.label}</p>
+            <p className={`text-xl font-semibold capitalize ${card.color}`}>{card.value}</p>
           </div>
         ))}
       </div>
-
-      {scores.length > 0 && (
-        <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Your recent scores</h2>
-          <div className="flex gap-3 flex-wrap">
-            {scores.slice(0, 5).map((s, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center font-bold text-white">
-                  {s.value}
-                </div>
-                <span className="text-xs text-zinc-500">
-                  {new Date(s.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {latestDraw && (
-        <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Last draw — {latestDraw.month}</h2>
-          <div className="flex gap-2 flex-wrap">
-            {latestDraw.drawnNumbers?.map(n => (
-              <div key={n} className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white text-sm">
-                {n}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

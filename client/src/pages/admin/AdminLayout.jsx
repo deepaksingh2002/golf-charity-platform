@@ -4,18 +4,16 @@ import { useDispatch, useSelector } from 'react-redux';
 import { BarChart3, Users, Trophy, HeartHandshake, Award, LogOut, ChevronRight } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
-import { baseApi } from '../../api/baseApi';
-import { logout, selectCurrentUser } from '../../store/authSlice';
+import { logout, selectUser } from '../../store/slices/authSlice';
 
 export default function AdminLayout() {
   const dispatch = useDispatch();
-  const user = useSelector(selectCurrentUser);
+  const user = useSelector(selectUser);
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = () => {
     dispatch(logout());
-    dispatch(baseApi.util.resetApiState());
     navigate('/login');
   };
 
