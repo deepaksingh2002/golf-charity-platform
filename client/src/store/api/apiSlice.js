@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { selectToken } from '../slices/authSlice';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'https://golf-charity-6fnp.onrender.com/api',
+  baseUrl: import.meta.env.VITE_API_URL || 'https://golf-charity-6fnp.onrender.com/api',
   prepareHeaders: (headers, { getState }) => {
     const token = selectToken(getState());
     if (token) {
