@@ -1,73 +1,124 @@
-import { useEffect } from 'react';
+import React from 'react';
 import toast from 'react-hot-toast';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  clearAdminMessages,
-  fetchWinnersList,
-  selectAdminError,
-  selectAdminLoading,
-  selectAdminSuccess,
-  selectAdminWinners,
-  verifyWinner,
-} from '../../store/slices/adminSlice';
+import { useGetWinnersListQuery, useVerifyWinnerMutation } from '../../store/api/adminApiSlice';
+import { Trophy, CheckCircle, Clock, User, PoundSterling, Calendar, AlertCircle } from 'lucide-react';
+import { Card } from '../../components/ui/Card';
+import { Spinner } from '../../components/ui/Spinner';
+import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 
 export default function AdminWinnersPage() {
-  const dispatch = useDispatch();
-  const winners = useSelector(selectAdminWinners);
-  const loading = useSelector(selectAdminLoading);
-  const error = useSelector(selectAdminError);
-  const success = useSelector(selectAdminSuccess);
+  const { data: winnersResponse, isLoading, error } = useGetWinnersListQuery();
+  const winners = Array.isArray(winnersResponse) ? winnersResponse : winnersResponse?.winners || [];
+  const [verifyWinner, { isLoading: isVerifying }] = useVerifyWinnerMutation();
 
-  // deps: [dispatch] loads the winners list when the admin winners page mounts.
-  useEffect(() => {
-    dispatch(fetchWinnersList());
-  }, [dispatch]);
-
-  // deps: [error, success, dispatch] handles winner verification messages coming from Redux.
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearAdminMessages());
-    }
-    if (success) {
-      toast.success(success);
-      dispatch(clearAdminMessages());
-    }
-  }, [error, success, dispatch]);
-
-  const handleVerify = async (drawId, userId) => {
-    const result = await dispatch(verifyWinner({ drawId, userId }));
-
-    if (verifyWinner.fulfilled.match(result)) {
-      dispatch(fetchWinnersList());
+  const handleVerify = async (drawId, winnerId) => {
+    if (!window.confirm('Mark this winner as verified and paid?')) return;
+    
+    try {
+      await verifyWinner({ drawId, winnerId }).unwrap();
+      toast.success('Winner verified successfully');
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to verify winner');
     }
   };
 
-  if (loading) {
-    return <p className="p-6 text-sm text-zinc-500">Loading winners...</p>;
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
-  if (!(winners ?? []).length) {
-    return <p className="p-6 text-sm text-zinc-500">No winners yet</p>;
+  if (error) {
+    return (
+      <div className="p-6 rounded-xl border border-red-200 bg-red-50 text-red-700 flex items-center gap-3">
+        <AlertCircle size={20} />
+        <div>
+          <h3 className="font-bold">Error loading winners</h3>
+          <p className="text-sm">{error?.data?.message || 'Please check your connection and permissions.'}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-3 p-6">
-      {(winners ?? []).map((winner) => (
-        <div key={`${winner?.drawId ?? 'draw'}-${winner?.winnerId ?? winner?.userId?._id ?? 'winner'}`} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="font-medium text-zinc-900">{winner?.userName ?? winner?.userId?.name ?? 'Unknown'}</p>
-          <p className="text-sm text-zinc-500">{winner?.matchCount ?? 0}-match - GBP {(winner?.prizeAmount ?? 0).toFixed(2)}</p>
-          <p className="text-sm capitalize text-zinc-500">{winner?.paymentStatus ?? 'pending'}</p>
-          {winner?.paymentStatus === 'pending' ? (
-            <button
-              onClick={() => handleVerify(winner?.drawId, winner?.winnerId ?? winner?.userId?._id)}
-              className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
-            >
-              Mark as paid
-            </button>
-          ) : null}
-        </div>
-      ))}
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div>
+        <h1 className="text-3xl font-bold text-zinc-900 flex items-center gap-3">
+          <Trophy className="text-amber-500" />
+          Winners & Payouts
+        </h1>
+        <p className="text-zinc-500 mt-1">Track and verify prize distributions across all draws.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {winners.length > 0 ? (
+          winners.map((winner) => {
+            const isVerified = winner.isVerified || winner.paymentStatus === 'paid';
+            return (
+              <Card key={`${winner.drawId}-${winner.winnerId}`} className="p-6 hover:shadow-md transition-shadow">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                      <User size={24} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-zinc-900 text-lg">
+                          {winner.userName || winner.userId?.name || 'Anonymous Winner'}
+                        </h3>
+                        <Badge variant={isVerified ? 'active' : 'inactive'}>
+                          {isVerified ? 'Verified & Paid' : 'Pending Verification'}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-zinc-500">
+                        <div className="flex items-center gap-1">
+                          <PoundSterling size={14} />
+                          <span className="font-bold text-zinc-900">£{(winner.prizeAmount ?? 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Trophy size={14} className="text-amber-500" />
+                          <span>{winner.matchCount}-match Winner</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar size={14} />
+                          <span>Draw Date: {winner.drawDate ? new Date(winner.drawDate).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="shrink-0 flex items-center gap-3">
+                    {!isVerified ? (
+                      <Button 
+                        onClick={() => handleVerify(winner.drawId, winner.winnerId || winner.userId?._id)}
+                        loading={isVerifying}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                      >
+                        <CheckCircle size={18} className="mr-2" />
+                        Verify Payment
+                      </Button>
+                    ) : (
+                      <div className="text-emerald-600 flex items-center gap-1 px-4 py-2 bg-emerald-50 rounded-lg font-medium border border-emerald-100">
+                        <CheckCircle size={18} />
+                        Completed
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })
+        ) : (
+          <Card className="p-12 text-center border-dashed border-zinc-200">
+            <Clock className="mx-auto text-zinc-300 mb-4" size={48} />
+            <p className="text-zinc-500 font-medium">No winners recorded yet.</p>
+            <p className="text-sm text-zinc-400 mt-1">Winners will appear here once draws are processed.</p>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
