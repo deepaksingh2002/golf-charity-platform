@@ -3,27 +3,23 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Calendar, Globe } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import toast from 'react-hot-toast';
+import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
-import {
-  fetchCharityById,
-  selectCharitiesLoading,
-  selectSelectedCharity,
-} from '../../store/slices/charitySlice';
+import { useGetCharityByIdQuery } from '../../store/api/charityApiSlice';
 
 export default function CharityDetailPage() {
   const { id } = useParams();
-  const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const charity = useSelector(selectSelectedCharity);
-  const loading = useSelector(selectCharitiesLoading);
+  const { data: charity, isLoading: loading, error } = useGetCharityByIdQuery(id, {
+    skip: !id,
+  });
 
-  // deps: [dispatch, id] fetches the selected charity record from Redux whenever the route id changes.
   useEffect(() => {
-    if (id) {
-      dispatch(fetchCharityById(id));
+    if (error) {
+      toast.error(error?.data?.message || 'Failed to load charity details');
     }
-  }, [dispatch, id]);
+  }, [error]);
 
   if (loading && !charity) {
     return <div className="flex min-h-screen items-center justify-center"><Spinner size="lg" /></div>;
