@@ -1,81 +1,67 @@
 import { useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  clearDrawMessages,
-  createDraw,
-  fetchCurrentDraw,
-  fetchPublishedDraws,
-  publishDraw,
-  selectActiveDraft,
-  selectDrawsError,
-  selectDrawsLoading,
-  selectDrawsSuccess,
-  selectPublishedDraws,
-  selectPublishLoading,
-  selectSimulateLoading,
-  simulateDraw,
-} from '../../store/slices/drawSlice';
+import { 
+  useGetActiveDrawsQuery, 
+  useGetDrawHistoryQuery,
+  useCreateDrawMutation,
+  useSimulateDrawMutation,
+  usePublishDrawMutation
+} from '../../store/api/drawApiSlice';
 
 export default function AdminDrawsPage() {
-  const dispatch = useDispatch();
-  const publishedDraws = useSelector(selectPublishedDraws);
-  const activeDraft = useSelector(selectActiveDraft);
-  const loading = useSelector(selectDrawsLoading);
-  const simLoading = useSelector(selectSimulateLoading);
-  const pubLoading = useSelector(selectPublishLoading);
-  const error = useSelector(selectDrawsError);
-  const success = useSelector(selectDrawsSuccess);
+  const { data: publishedDrawsResponse, isLoading: loadingHistory, error: historyError } = useGetDrawHistoryQuery();
+  const { data: activeDraft, isLoading: loadingActive, error: activeError } = useGetActiveDrawsQuery();
+  const publishedDraws = Array.isArray(publishedDrawsResponse) ? publishedDrawsResponse : publishedDrawsResponse?.draws || [];
 
-  // deps: [dispatch] loads both draw history and the current draft from Redux when the page opens.
-  useEffect(() => {
-    dispatch(fetchPublishedDraws());
-    dispatch(fetchCurrentDraw());
-  }, [dispatch]);
+  const [createDraw, { isLoading: isCreating }] = useCreateDrawMutation();
+  const [simulateDraw, { isLoading: isSimulating }] = useSimulateDrawMutation();
+  const [publishDraw, { isLoading: isPublishing }] = usePublishDrawMutation();
 
-  // deps: [error, success, dispatch] displays draw workflow messages and clears them after use.
+  const loading = loadingHistory || loadingActive || isCreating;
+  const simLoading = isSimulating;
+  const pubLoading = isPublishing;
+
   useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearDrawMessages());
-    }
-    if (success) {
-      toast.success(success);
-      dispatch(clearDrawMessages());
-    }
-  }, [error, success, dispatch]);
+    if (historyError) toast.error(historyError?.data?.message || 'Failed to load publish history');
+    if (activeError) toast.error(activeError?.data?.message || 'Failed to load active draft');
+  }, [historyError, activeError]);
 
   const handleCreate = async () => {
-    const result = await dispatch(createDraw({ drawType: 'random' }));
-    if (createDraw.fulfilled.match(result)) {
-      dispatch(fetchCurrentDraw());
+    try {
+      await createDraw({ drawType: 'random' }).unwrap();
+      toast.success('Draw created successfully');
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to create draw');
     }
   };
 
   const handleSimulate = async () => {
     const draftId = activeDraft?._id ?? 'current';
-    if (!draftId) {
-      toast.error('Create a draw first');
-      return;
+    if (!draftId || draftId === 'current') {
+      if (!activeDraft?._id) return toast.error('Create a draw first');
     }
-
-    await dispatch(simulateDraw(draftId));
+    
+    try {
+      await simulateDraw(activeDraft._id).unwrap();
+      toast.success('Draw simulated successfully');
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to simulate draw');
+    }
   };
 
   const handlePublish = async () => {
     const draftId = activeDraft?._id ?? 'current';
-    if (!draftId) {
-      toast.error('Simulate a draw first');
-      return;
+    if (!draftId || draftId === 'current') {
+      if (!activeDraft?._id) return toast.error('Simulate a draw first');
     }
 
-    if (!window.confirm('Publish this draw?')) {
-      return;
-    }
+    if (!window.confirm('Publish this draw?')) return;
 
-    const result = await dispatch(publishDraw(draftId));
-    if (publishDraw.fulfilled.match(result)) {
-      dispatch(fetchPublishedDraws());
+    try {
+      await publishDraw(activeDraft._id).unwrap();
+      toast.success('Draw published successfully');
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to publish draw');
     }
   };
 
