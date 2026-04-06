@@ -135,7 +135,8 @@ export const publishDraw = async (req, res) => {
       const nextMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
       await Draw.findOneAndUpdate(
         { month: nextMonth },
-        { $inc: { jackpotRolledOver: draw.prizePool.fiveMatch } }
+        { $inc: { jackpotRolledOver: draw.prizePool.fiveMatch } },
+        { upsert: true, new: true }
       );
     } else {
       draw.jackpotRolledOver = 0;
