@@ -3,11 +3,9 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { useLoginMutation } from '../../store/api/authApiSlice';
 import {
-  clearAuthError,
-  loginUser,
-  selectAuthError,
-  selectAuthLoading,
+  setCredentials,
   selectIsAuthenticated,
   selectIsAdmin,
 } from '../../store/slices/authSlice';
@@ -16,20 +14,12 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const loading = useSelector(selectAuthLoading);
-  const error = useSelector(selectAuthError);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const isAdmin = useSelector(selectIsAdmin);
   const redirectPath = location.state?.from?.pathname;
   const { register, handleSubmit, formState: { errors } } = useForm();
 
-  // deps: [error, dispatch] surfaces auth failures once and then clears them from Redux state.
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearAuthError());
-    }
-  }, [error, dispatch]);
+  const [login, { isLoading }] = useLoginMutation();
 
   // deps: [isAuthenticated, isAdmin, navigate, redirectPath] redirects successful sessions away from the login page.
   useEffect(() => {
@@ -39,12 +29,16 @@ export default function LoginPage() {
   }, [isAuthenticated, isAdmin, navigate, redirectPath]);
 
   const onSubmit = async (data) => {
-    const result = await dispatch(loginUser(data));
-
-    if (loginUser.fulfilled.match(result)) {
-      const user = result.payload?.user ?? result.payload;
+    try {
+      const res = await login(data).unwrap();
+      const token = res.token;
+      const user = res.user ? res.user : { _id: res._id, name: res.name, email: res.email, role: res.role };
+      
+      dispatch(setCredentials({ user, token }));
       toast.success('Welcome back!');
       navigate(redirectPath || (user?.role === 'admin' ? '/admin' : '/dashboard'), { replace: true });
+    } catch (err) {
+      toast.error(err?.data?.message || 'Login failed');
     }
   };
 
@@ -81,10 +75,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500"
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Signing in...
