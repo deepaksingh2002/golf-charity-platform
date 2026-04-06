@@ -1,26 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Spinner } from '../../components/ui/Spinner';
-import { fetchCharities, selectCharities, selectCharitiesLoading } from '../../store/slices/charitySlice';
+import toast from 'react-hot-toast';
+import { useGetCharitiesQuery } from '../../store/api/charityApiSlice';
 
 export default function CharitiesPage() {
-  const dispatch = useDispatch();
-  const charities = useSelector(selectCharities);
-  const loading = useSelector(selectCharitiesLoading);
   const [search, setSearch] = useState('');
+  const { data: charitiesResponse, isLoading: loading, error } = useGetCharitiesQuery(search, {
+    // Adding a debounce effect on typing is ideal, but RTK handles caching effectively
+  });
+  const charities = Array.isArray(charitiesResponse) ? charitiesResponse : charitiesResponse?.charities || [];
 
-  // deps: [dispatch, search] reloads the public charity directory whenever the search term changes.
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      dispatch(fetchCharities({ searchQuery: search, limit: 100 }));
-    }, 300);
-
-    return () => clearTimeout(timeout);
-  }, [dispatch, search]);
+    if (error) {
+      toast.error(error?.data?.message || 'Failed to load charities');
+    }
+  }, [error]);
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 pt-32">
