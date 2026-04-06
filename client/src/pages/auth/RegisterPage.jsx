@@ -3,29 +3,19 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRegisterMutation } from '../../store/api/authApiSlice';
 import {
-  clearAuthError,
-  registerUser,
-  selectAuthError,
-  selectAuthLoading,
+  setCredentials,
   selectIsAuthenticated,
 } from '../../store/slices/authSlice';
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const loading = useSelector(selectAuthLoading);
-  const error = useSelector(selectAuthError);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
 
-  // deps: [error, dispatch] displays registration failures once and then clears them.
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearAuthError());
-    }
-  }, [error, dispatch]);
+  const [registerAccount, { isLoading }] = useRegisterMutation();
 
   // deps: [isAuthenticated, navigate] redirects newly created accounts into the dashboard.
   useEffect(() => {
@@ -35,15 +25,18 @@ export default function RegisterPage() {
   }, [isAuthenticated, navigate]);
 
   const onSubmit = async (data) => {
-    const result = await dispatch(registerUser({
-      name: data.name,
-      email: data.email,
-      password: data.password,
-    }));
-
-    if (registerUser.fulfilled.match(result)) {
+    try {
+      const res = await registerAccount({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+      }).unwrap();
+      
+      dispatch(setCredentials({ ...res }));
       toast.success('Account created! Welcome.');
       navigate('/dashboard', { replace: true });
+    } catch (err) {
+      toast.error(err?.data?.message || 'Registration failed');
     }
   };
 
@@ -108,10 +101,10 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500"
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Creating account...
