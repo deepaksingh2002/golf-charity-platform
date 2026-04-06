@@ -15,7 +15,6 @@
     "@stripe/react-stripe-js": "^6.0.0",
     "@stripe/stripe-js": "^9.0.0",
     "@tailwindcss/vite": "^4.2.2",
-    "axios": "^1.14.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.11.17",
     "lucide-react": "^1.7.0",
