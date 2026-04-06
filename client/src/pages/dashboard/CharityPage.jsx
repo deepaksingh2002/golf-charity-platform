@@ -1,50 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchCurrentUser, selectUser } from '../../store/slices/authSlice';
-import {
-  clearCharityMessages,
-  fetchCharities,
-  selectCharities,
-  selectCharitiesError,
-  selectCharitiesLoading,
-  selectCharitiesSuccess,
-  selectUserCharity,
-} from '../../store/slices/charitySlice';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
+import { useGetMeQuery, useUpdateProfileMutation } from '../../store/api/authApiSlice';
+import { useGetCharitiesQuery } from '../../store/api/charityApiSlice';
 
 export default function CharityPage() {
-  const dispatch = useDispatch();
-  const charities = useSelector(selectCharities);
-  const user = useSelector(selectUser);
-  const loading = useSelector(selectCharitiesLoading);
-  const error = useSelector(selectCharitiesError);
-  const success = useSelector(selectCharitiesSuccess);
-  const [pct, setPct] = useState(user?.charityPercentage ?? 10);
-  const [selectedId, setSelectedId] = useState(user?.selectedCharity?._id || user?.selectedCharity || '');
-  const [saving, setSaving] = useState(false);
+  const reduxUser = useSelector(selectUser);
+  const { data: userData, refetch: refetchUser } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const user = userData || reduxUser;
+  
+  const { data: charitiesResponse, isLoading: loadingCharities } = useGetCharitiesQuery();
+  const charities = useMemo(() => {
+    const data = charitiesResponse?.charities || charitiesResponse || [];
+    return Array.isArray(data) ? data : [];
+  }, [charitiesResponse]);
+  
+  const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
+  const loading = loadingCharities;
+  const saving = isUpdating;
 
-  // deps: [dispatch] loads charities from Redux when the dashboard charity page mounts.
-  useEffect(() => {
-    dispatch(fetchCharities({ limit: 100 }));
-  }, [dispatch]);
+  const [localPct, setLocalPct] = useState(null);
+  const [localSelectedId, setLocalSelectedId] = useState(null);
 
-  // deps: [user] keeps local form controls aligned with the latest auth profile from Redux.
-  useEffect(() => {
-    setPct(user?.charityPercentage ?? 10);
-    setSelectedId(user?.selectedCharity?._id || user?.selectedCharity || '');
-  }, [user]);
-
-  // deps: [error, success, dispatch] surfaces charity save state via toasts and clears messages after display.
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearCharityMessages());
-    }
-    if (success) {
-      toast.success(success);
-      dispatch(clearCharityMessages());
-    }
-  }, [error, success, dispatch]);
+  const pct = localPct !== null ? localPct : (user?.charityPercentage ?? 10);
+  const selectedId = localSelectedId !== null 
+    ? localSelectedId 
+    : (user?.selectedCharity?._id || user?.selectedCharity || '');
 
   const selectedCharity = useMemo(
     () => charities.find((charity) => charity?._id === selectedId) ?? null,
@@ -52,12 +34,13 @@ export default function CharityPage() {
   );
 
   const handleSave = async () => {
-    setSaving(true);
-    const result = await dispatch(selectUserCharity({ charityId: selectedId, percentage: pct }));
-    setSaving(false);
-
-    if (selectUserCharity.fulfilled.match(result)) {
-      dispatch(fetchCurrentUser());
+    if (!selectedId) return toast.error('Please select a charity');
+    try {
+      await updateProfile({ selectedCharity: selectedId, charityPercentage: pct }).unwrap();
+      toast.success('Preferences saved successfully');
+      refetchUser();
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to update preferences');
     }
   };
 
@@ -78,7 +61,7 @@ export default function CharityPage() {
           <label className="mb-2 block text-xs text-zinc-500">Select a charity</label>
           <select
             value={selectedId}
-            onChange={(event) => setSelectedId(event.target.value)}
+            onChange={(event) => setLocalSelectedId(event.target.value)}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
           >
             <option value="">Select a charity</option>
@@ -97,7 +80,7 @@ export default function CharityPage() {
             min="10"
             max="100"
             value={pct}
-            onChange={(event) => setPct(Number(event.target.value))}
+            onChange={(event) => setLocalPct(Number(event.target.value))}
             className="w-full accent-emerald-500"
           />
         </div>
