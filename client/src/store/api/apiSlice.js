@@ -3,6 +3,7 @@ import { selectToken } from '../slices/authSlice';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_URL || 'https://golf-charity-6fnp.onrender.com/api',
+  credentials: 'include',
   prepareHeaders: (headers, { getState }) => {
     const token = selectToken(getState());
     if (token) {
