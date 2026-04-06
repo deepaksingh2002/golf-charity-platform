@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield, User as UserIcon, Settings } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { logout, selectIsAdmin, selectUser } from '../../store/slices/authSlice';
@@ -22,7 +22,9 @@ export default function DashboardLayout() {
     { name: 'Scores', path: '/dashboard/scores', icon: <Target size={20} /> },
     { name: 'Draws', path: '/dashboard/draws', icon: <Trophy size={20} /> },
     { name: 'Plan', path: '/dashboard/subscription', icon: <CreditCard size={20} /> },
-    { name: 'Charity', path: '/dashboard/charity', icon: <HeartHandshake size={20} /> }
+    { name: 'Charity', path: '/dashboard/charity', icon: <HeartHandshake size={20} /> },
+    { name: 'Profile', path: '/dashboard/profile', icon: <UserIcon size={20} /> },
+    { name: 'Settings', path: '/dashboard/settings', icon: <Settings size={20} /> }
   ];
 
   return (
@@ -67,10 +69,10 @@ export default function DashboardLayout() {
             <Badge variant={user?.subscriptionStatus === 'active' ? 'active' : 'inactive'} className="hidden sm:inline-flex">
               {user?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
             </Badge>
-            <div className="flex items-center space-x-3 sm:pl-4 sm:border-l border-zinc-200">
+            <Link to="/dashboard/profile" className="flex items-center space-x-3 sm:pl-4 sm:border-l border-zinc-200 hover:opacity-80 transition-opacity">
               <span className="text-sm font-medium text-zinc-700 hidden sm:block">{user?.name}</span>
               <Avatar fallback={user?.name} size="sm" className="sm:h-10 sm:w-10" />
-            </div>
+            </Link>
           </div>
         </header>
 
