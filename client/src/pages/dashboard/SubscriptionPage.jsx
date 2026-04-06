@@ -1,65 +1,48 @@
 import { useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchCurrentUser } from '../../store/slices/authSlice';
-import {
-  cancelSubscription,
-  clearSubscriptionMessages,
-  createSubscription,
-  fetchSubscriptionStatus,
-  selectSubscriptionError,
-  selectSubscriptionLoading,
-  selectSubscriptionPlan,
-  selectSubscriptionRenewDate,
-  selectSubscriptionStatus,
-  selectSubscriptionSuccess,
-} from '../../store/slices/subscriptionSlice';
+import { useGetSubscriptionStatusQuery, useCreateCheckoutSessionMutation, useCancelSubscriptionMutation } from '../../store/api/subscriptionApiSlice';
+import { useGetMeQuery } from '../../store/api/authApiSlice';
 
 export default function SubscriptionPage() {
-  const dispatch = useDispatch();
-  const status = useSelector(selectSubscriptionStatus);
-  const plan = useSelector(selectSubscriptionPlan);
-  const renewDate = useSelector(selectSubscriptionRenewDate);
-  const loading = useSelector(selectSubscriptionLoading);
-  const error = useSelector(selectSubscriptionError);
-  const success = useSelector(selectSubscriptionSuccess);
+  const { data: subData, isLoading: loadingStatus, error: statusError } = useGetSubscriptionStatusQuery();
+  const { refetch: refetchUser } = useGetMeQuery();
+  const [createCheckoutSession, { isLoading: isCreating }] = useCreateCheckoutSessionMutation();
+  const [cancelSubscription, { isLoading: isCanceling }] = useCancelSubscriptionMutation();
 
-  // deps: [dispatch] fetches the latest subscription snapshot from Redux on mount.
-  useEffect(() => {
-    dispatch(fetchSubscriptionStatus());
-  }, [dispatch]);
+  const loading = loadingStatus || isCreating || isCanceling;
+  
+  const status = subData?.status;
+  const plan = subData?.planId;
+  const renewDate = subData?.currentPeriodEnd;
 
-  // deps: [error, success, dispatch] displays subscription messages and clears them after use.
   useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearSubscriptionMessages());
+    if (statusError) {
+      toast.error(statusError?.data?.message || 'Failed to fetch subscription data');
     }
-    if (success) {
-      toast.success(success);
-      dispatch(clearSubscriptionMessages());
-    }
-  }, [error, success, dispatch]);
+  }, [statusError]);
 
   const handleSubscribe = async (selectedPlan) => {
-    const result = await dispatch(createSubscription({ plan: selectedPlan }));
-
-    if (createSubscription.fulfilled.match(result)) {
-      dispatch(fetchCurrentUser());
-      dispatch(fetchSubscriptionStatus());
+    try {
+      const { url } = await createCheckoutSession(selectedPlan).unwrap();
+      if (url) {
+        window.location.href = url; // Redirect to Stripe checkout
+      } else {
+        refetchUser(); // if handled internally
+      }
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to start checkout');
     }
   };
 
   const handleCancel = async () => {
-    if (!window.confirm('Are you sure you want to cancel?')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to cancel?')) return;
 
-    const result = await dispatch(cancelSubscription());
-
-    if (cancelSubscription.fulfilled.match(result)) {
-      dispatch(fetchSubscriptionStatus());
-      dispatch(fetchCurrentUser());
+    try {
+      await cancelSubscription().unwrap();
+      toast.success('Subscription cancelled successfully');
+      refetchUser();
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to cancel subscription');
     }
   };
 
