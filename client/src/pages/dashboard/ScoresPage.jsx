@@ -1,43 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  addScore,
-  clearScoreMessages,
-  deleteScore,
-  fetchScores,
-  selectScores,
-  selectScoresError,
-  selectScoresLoading,
-  selectScoresSuccess,
-} from '../../store/slices/scoreSlice';
+import { 
+  useGetScoresQuery, 
+  useAddScoreMutation, 
+  useDeleteScoreMutation 
+} from '../../store/api/scoreApiSlice';
 
 export default function ScoresPage() {
-  const dispatch = useDispatch();
-  const scores = useSelector(selectScores);
-  const loading = useSelector(selectScoresLoading);
-  const error = useSelector(selectScoresError);
-  const success = useSelector(selectScoresSuccess);
+  const { data: scoresResponse, isLoading, error } = useGetScoresQuery();
+  const scores = Array.isArray(scoresResponse) ? scoresResponse : scoresResponse?.scores || [];
+  const [addScore, { isLoading: isAdding }] = useAddScoreMutation();
+  const [deleteScore] = useDeleteScoreMutation();
+
   const [value, setValue] = useState(25);
   const [date, setDate] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  // deps: [dispatch] fetches the score list once from Redux on mount.
-  useEffect(() => {
-    dispatch(fetchScores());
-  }, [dispatch]);
-
-  // deps: [error, success, dispatch] shows score toasts from Redux state and clears them after display.
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-      dispatch(clearScoreMessages());
-    }
-    if (success) {
-      toast.success(success);
-      dispatch(clearScoreMessages());
-    }
-  }, [error, success, dispatch]);
 
   const handleAdd = async (event) => {
     event.preventDefault();
@@ -46,22 +22,25 @@ export default function ScoresPage() {
       return;
     }
 
-    setSubmitting(true);
-    const result = await dispatch(addScore({ value, date }));
-    setSubmitting(false);
-
-    if (addScore.fulfilled.match(result)) {
+    try {
+      await addScore({ value, date }).unwrap();
+      toast.success('Score added!');
       setValue(25);
       setDate('');
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to add score');
     }
   };
 
   const handleDelete = async (scoreId) => {
-    if (!window.confirm('Delete this score?')) {
-      return;
-    }
+    if (!window.confirm('Delete this score?')) return;
 
-    await dispatch(deleteScore(scoreId));
+    try {
+      await deleteScore(scoreId).unwrap();
+      toast.success('Score deleted!');
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to delete score');
+    }
   };
 
   return (
@@ -97,16 +76,17 @@ export default function ScoresPage() {
           <div className="sm:self-end">
             <button
               type="submit"
-              disabled={submitting || loading}
+              disabled={isAdding || isLoading}
               className="min-h-[44px] rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700"
             >
-              {submitting ? 'Adding...' : 'Add Score'}
+              {isAdding ? 'Adding...' : 'Add Score'}
             </button>
           </div>
         </div>
       </form>
 
-      {loading ? <p className="text-sm text-zinc-500">Loading scores...</p> : null}
+      {isLoading ? <p className="text-sm text-zinc-500">Loading scores...</p> : null}
+      {error ? <p className="text-sm text-red-500">Error loading scores: {error?.data?.message || 'Unknown error'}</p> : null}
 
       <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
         {(scores ?? []).length > 0 ? (
@@ -129,7 +109,7 @@ export default function ScoresPage() {
             ))}
           </div>
         ) : (
-          !loading ? <p className="p-5 text-sm text-zinc-500">No scores yet. Add your first score above.</p> : null
+          !isLoading ? <p className="p-5 text-sm text-zinc-500">No scores yet. Add your first score above.</p> : null
         )}
       </div>
     </div>
