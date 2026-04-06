@@ -25,8 +25,9 @@ export const createCheckoutSession = async (req, res) => {
       user.subscriptionStatus = 'active';
       user.subscriptionPlan = selectedPlan;
       user.subscriptionRenewDate = new Date(now + days * 24 * 60 * 60 * 1000);
+      user.stripeSubscriptionId = 'mock_sub_' + now;
       await user.save();
-      return res.json({ success: true, mocked: true, message: 'Subscription activated (test mode)' });
+      return res.json({ success: true, mocked: true, plan: selectedPlan, message: 'Subscription activated (test mode)' });
     }
 
     if (!resolvedPriceId) {
@@ -64,7 +65,9 @@ export const cancelSubscription = async (req, res) => {
       return res.status(400).json({ message: 'No active subscription found' });
     }
 
-    await stripeService.cancelSubscription(user.stripeSubscriptionId);
+    if (!user.stripeSubscriptionId.startsWith('mock_sub_')) {
+      await stripeService.cancelSubscription(user.stripeSubscriptionId);
+    }
     
     user.subscriptionStatus = 'cancelled';
     await user.save();
@@ -87,6 +90,19 @@ export const getSubscriptionStatus = async (req, res) => {
       return res.json({ status: 'inactive' });
     }
     
+    if (user.stripeSubscriptionId.startsWith('mock_sub_')) {
+      return res.json({
+        status: user.subscriptionStatus,
+        subscriptionPlan: user.subscriptionPlan,
+        renewDate: user.subscriptionRenewDate,
+        stripeData: {
+          current_period_end: user.subscriptionRenewDate ? Math.floor(user.subscriptionRenewDate.getTime() / 1000) : null,
+          cancel_at_period_end: false,
+          status: 'active'
+        }
+      });
+    }
+
     const subscription = await stripeService.getSubscription(user.stripeSubscriptionId);
     res.json({
       status: user.subscriptionStatus,
