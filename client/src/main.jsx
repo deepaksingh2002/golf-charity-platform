@@ -1,30 +1,29 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { Provider } from 'react-redux';
-import { Toaster } from 'react-hot-toast';
 import { store } from './store/store';
-import App from './App';
 import './index.css';
+
+// Router
+import { router } from './router';
+
+// Mock Data Seeding
+import { mockUsers, mockCharities, mockScores, mockDraws } from './data/mockData';
+const seed = (key, data) => {
+  if (!localStorage.getItem(key)) {
+    localStorage.setItem(key, JSON.stringify(data));
+  }
+};
+seed('golf_mock_users', mockUsers);
+seed('golf_mock_charities', mockCharities);
+seed('golf_mock_scores', mockScores);
+seed('golf_mock_draws', mockDraws);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>
-      <BrowserRouter>
-        <App />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              fontSize: '14px',
-              borderRadius: '10px',
-            },
-            success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
-            error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
-          }}
-        />
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </Provider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
