@@ -92,7 +92,7 @@ const HowItWorksSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {steps.map((step, i) => (
             <motion.div 
-              key={i}
+              key={step.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
