@@ -6,14 +6,16 @@ import { useGetMeQuery } from '../../store/api/authApiSlice';
 
 export default function DashboardOverviewPage() {
   const reduxUser = useSelector(selectUser);
-  const { data: userData } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const { data: userData, error: userError } = useGetMeQuery(undefined, { skip: !reduxUser });
   const user = userData || reduxUser;
-  const { data: scoresResponse } = useGetScoresQuery();
-  const { data: subData } = useGetSubscriptionStatusQuery();
+  const { data: scoresResponse, error: scoresError } = useGetScoresQuery();
+  const { data: subData, error: subError } = useGetSubscriptionStatusQuery();
   
   const scores = Array.isArray(scoresResponse) ? scoresResponse : scoresResponse?.scores || [];
   const subStatus = subData?.status || user?.subscriptionStatus || 'inactive';
   const renewDate = subData?.currentPeriodEnd;
+  
+  if (!user) return <div className="flex justify-center p-12">Loading...</div>;
 
   const cards = [
     { label: 'Subscription', value: subStatus ?? user?.subscriptionStatus ?? 'inactive', color: 'text-emerald-400' },
