@@ -1,27 +1,22 @@
 import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  fetchCurrentDraw,
-  fetchPublishedDraws,
-  selectCurrentDraw,
-  selectDrawsLoading,
-  selectPublishedDraws,
-} from '../../store/slices/drawSlice';
-import { fetchScores, selectScores } from '../../store/slices/scoreSlice';
+import toast from 'react-hot-toast';
+import { useGetActiveDrawsQuery, useGetDrawHistoryQuery } from '../../store/api/drawApiSlice';
+import { useGetScoresQuery } from '../../store/api/scoreApiSlice';
 
 export default function DrawPage() {
-  const dispatch = useDispatch();
-  const publishedDraws = useSelector(selectPublishedDraws);
-  const currentDraw = useSelector(selectCurrentDraw);
-  const scores = useSelector(selectScores);
-  const loading = useSelector(selectDrawsLoading);
+  const { data: publishedDrawsResponse, isLoading: loadingHistory, error: historyError } = useGetDrawHistoryQuery();
+  const { data: currentDraw, isLoading: loadingActive, error: activeError } = useGetActiveDrawsQuery();
+  const { data: scoresResponse, isLoading: loadingScores, error: scoresError } = useGetScoresQuery();
 
-  // deps: [dispatch] fetches draw history, current draw state, and player scores when the page mounts.
+  const loading = loadingHistory || loadingActive || loadingScores;
+  const publishedDraws = Array.isArray(publishedDrawsResponse) ? publishedDrawsResponse : publishedDrawsResponse?.draws || [];
+  const scores = Array.isArray(scoresResponse) ? scoresResponse : scoresResponse?.scores || [];
+
   useEffect(() => {
-    dispatch(fetchPublishedDraws());
-    dispatch(fetchCurrentDraw());
-    dispatch(fetchScores());
-  }, [dispatch]);
+    if (historyError) toast.error(historyError?.data?.message || 'Failed to load draw history');
+    if (activeError) toast.error(activeError?.data?.message || 'Failed to load active draw');
+    if (scoresError) toast.error(scoresError?.data?.message || 'Failed to load scores');
+  }, [historyError, activeError, scoresError]);
 
   const userScoreValues = (scores ?? []).map((score) => score?.value).filter((value) => value != null);
 
