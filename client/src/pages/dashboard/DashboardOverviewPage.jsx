@@ -1,26 +1,19 @@
-import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchCurrentUser, selectUser } from '../../store/slices/authSlice';
-import { fetchScores, selectScores } from '../../store/slices/scoreSlice';
-import {
-  fetchSubscriptionStatus,
-  selectSubscriptionStatus,
-  selectSubscriptionRenewDate,
-} from '../../store/slices/subscriptionSlice';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
+import { useGetScoresQuery } from '../../store/api/scoreApiSlice';
+import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
+import { useGetMeQuery } from '../../store/api/authApiSlice';
 
 export default function DashboardOverviewPage() {
-  const dispatch = useDispatch();
-  const user = useSelector(selectUser);
-  const scores = useSelector(selectScores);
-  const subStatus = useSelector(selectSubscriptionStatus);
-  const renewDate = useSelector(selectSubscriptionRenewDate);
-
-  // deps: [dispatch] loads the dashboard's three core data domains from Redux on first render.
-  useEffect(() => {
-    dispatch(fetchCurrentUser());
-    dispatch(fetchScores());
-    dispatch(fetchSubscriptionStatus());
-  }, [dispatch]);
+  const reduxUser = useSelector(selectUser);
+  const { data: userData } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const user = userData || reduxUser;
+  const { data: scoresResponse } = useGetScoresQuery();
+  const { data: subData } = useGetSubscriptionStatusQuery();
+  
+  const scores = Array.isArray(scoresResponse) ? scoresResponse : scoresResponse?.scores || [];
+  const subStatus = subData?.status || user?.subscriptionStatus || 'inactive';
+  const renewDate = subData?.currentPeriodEnd;
 
   const cards = [
     { label: 'Subscription', value: subStatus ?? user?.subscriptionStatus ?? 'inactive', color: 'text-emerald-400' },
