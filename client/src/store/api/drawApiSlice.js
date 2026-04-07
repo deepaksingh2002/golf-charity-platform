@@ -38,7 +38,22 @@ export const drawApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Draw', id: 'LIST' }, { type: 'Draw', id: 'HISTORY' }],
     }),
+    uploadProof: builder.mutation({
+      query: ({ id, body }) => ({
+        url: `/draws/${id}/proof`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Draw', id }],
+    }),
   }),
 });
 
-export const { useGetActiveDrawsQuery, useGetDrawHistoryQuery, useCreateDrawMutation, useSimulateDrawMutation, usePublishDrawMutation } = drawApiSlice;
+export const { 
+  useGetActiveDrawsQuery, 
+  useGetDrawHistoryQuery, 
+  useCreateDrawMutation, 
+  useSimulateDrawMutation, 
+  usePublishDrawMutation,
+  useUploadProofMutation
+} = drawApiSlice;
