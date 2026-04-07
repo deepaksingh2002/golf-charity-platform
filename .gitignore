@@ -1,4 +1,45 @@
-node_modules
+# Dependencies
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Environment files
 .env
-dist
-build
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+client/.env
+client/.env.*
+!client/.env.example
+
+# Build output
+dist/
+build/
+server/dist/
+server/build/
+client/dist/
+client/build/
+
+# Generated uploads and temp files
+server/uploads/
+uploads/
+*.log
+*.tmp
+*.temp
+
+# Coverage and cache
+coverage/
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+.idea/
