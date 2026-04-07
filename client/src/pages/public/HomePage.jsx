@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Target, Trophy, HeartHandshake, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Target, Trophy, HeartHandshake, CheckCircle2, Sparkles, Gift, Heart } from 'lucide-react';
 
 const HeroSection = () => {
   return (
@@ -162,8 +162,87 @@ const CharitySpotlightSection = () => {
             </Link>
           </div>
           <div className="w-full lg:w-1/2 relative">
-            <div className="absolute inset-0 bg-emerald-100 rounded-[2rem] transform rotate-3"></div>
-            <img src="https://images.unsplash.com/photo-1593113511475-680f4f9547d5?auto=format&fit=crop&q=80&w=800" alt="Charity impact" loading="lazy" className="relative rounded-[2rem] shadow-2xl object-cover h-[400px] w-full" />
+            <motion.div
+              aria-hidden="true"
+              className="absolute inset-0 rounded-[2rem] bg-emerald-100/70 transform rotate-3"
+            />
+            <motion.div
+              aria-hidden="true"
+              animate={{ rotate: [3, 0, 3], y: [0, -8, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+              className="relative min-h-[400px] rounded-[2rem] border border-emerald-200/70 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.28),_transparent_38%),radial-gradient(circle_at_80%_20%,_rgba(168,85,247,0.18),_transparent_32%),radial-gradient(circle_at_bottom,_rgba(34,197,94,0.16),_transparent_35%)]" />
+              <div className="absolute inset-0 opacity-40 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:28px_28px]" />
+
+              <div className="relative h-full min-h-[400px] p-8 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-300 backdrop-blur">
+                    <Sparkles className="h-4 w-4" />
+                    Live impact
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur">
+                    $142k donated
+                  </div>
+                </div>
+
+                <div className="relative flex items-center justify-center py-10">
+                  <motion.div
+                    animate={{ scale: [1, 1.06, 1], opacity: [0.8, 1, 0.8] }}
+                    transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute h-40 w-40 rounded-full bg-emerald-400/20 blur-2xl"
+                  />
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+                    className="absolute h-48 w-48 rounded-full border border-emerald-300/30"
+                  />
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
+                    className="absolute h-64 w-64 rounded-full border border-violet-400/20 border-dashed"
+                  />
+                  <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-violet-500 shadow-[0_0_80px_rgba(16,185,129,0.45)]">
+                    <Heart className="h-11 w-11 fill-white text-white" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <motion.div
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                    className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur"
+                  >
+                    <Gift className="h-5 w-5 text-emerald-300" />
+                    <p className="mt-3 text-sm font-medium text-white">Charity grants</p>
+                    <p className="mt-1 text-xs text-zinc-400">Monthly support</p>
+                  </motion.div>
+                  <motion.div
+                    animate={{ y: [0, -14, 0] }}
+                    transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+                    className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur"
+                  >
+                    <Sparkles className="h-5 w-5 text-violet-300" />
+                    <p className="mt-3 text-sm font-medium text-white">Player rewards</p>
+                    <p className="mt-1 text-xs text-zinc-400">Prizes rolling up</p>
+                  </motion.div>
+                  <motion.div
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+                    className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur"
+                  >
+                    <HeartHandshake className="h-5 w-5 text-emerald-300" />
+                    <p className="mt-3 text-sm font-medium text-white">Shared impact</p>
+                    <p className="mt-1 text-xs text-zinc-400">Built to give back</p>
+                  </motion.div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-300 backdrop-blur">
+                  <span>Impact momentum</span>
+                  <span className="font-semibold text-emerald-300">Growing every round</span>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </div>

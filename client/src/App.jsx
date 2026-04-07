@@ -38,8 +38,13 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-white">
-        <Outlet />
+      <div className="min-h-screen bg-white flex flex-col">
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <footer className="border-t border-zinc-200 bg-white/90 px-6 py-4 text-center text-sm text-zinc-500">
+          Copyright © @deepaksingh2002
+        </footer>
       </div>
     </ErrorBoundary>
   );
