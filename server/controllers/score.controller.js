@@ -1,81 +1,76 @@
 import User from '../models/User.model.js';
+import { ApiError } from '../utils/apiError.js';
+import { sendApiResponse } from '../utils/apiResponse.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
-export const addScore = async (req, res) => {
-  try {
-    const { value, date } = req.body;
-    const user = await User.findById(req.user._id);
+const sortScoresDesc = (scores) => scores.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Ensure we don't exceed 5 items by removing the oldest
-    if (user.scores.length >= 5) {
-      // Sort ascending by date
-      user.scores.sort((a, b) => new Date(a.date) - new Date(b.date));
-      // Remove the oldest (first item)
-      user.scores.shift();
-    }
-    
-    user.scores.push({ value, date });
-    await user.save();
-
-    const sortedScores = user.scores.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.status(201).json(sortedScores);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+export const addScore = asyncHandler(async (req, res) => {
+  const { value, date } = req.body;
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
   }
-};
 
-export const getScores = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    const sortedScores = user.scores.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(sortedScores);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  if (user.scores.length >= 5) {
+    user.scores.sort((a, b) => new Date(a.date) - new Date(b.date));
+    user.scores.shift();
   }
-};
 
-export const updateScore = async (req, res) => {
-  try {
-    const { value, date } = req.body;
-    const { scoreId } = req.params;
-    const user = await User.findById(req.user._id);
+  user.scores.push({ value, date });
+  await user.save();
 
-    if (value === undefined && date === undefined) {
-      return res.status(400).json({ message: 'Nothing to update' });
-    }
+  sendApiResponse(res, 201, sortScoresDesc(user.scores), 'Score added successfully', { collectionKey: 'scores' });
+});
 
-    const score = user.scores.id(scoreId);
-    if (!score) {
-      return res.status(404).json({ message: 'Score not found' });
-    }
-
-    if (value !== undefined) score.value = value;
-    if (date !== undefined) score.date = date;
-
-    await user.save();
-
-    const sortedScores = user.scores.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(sortedScores);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+export const getScores = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
   }
-};
 
-export const deleteScore = async (req, res) => {
-  try {
-    const { scoreId } = req.params;
-    const user = await User.findById(req.user._id);
+  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Scores loaded successfully', { collectionKey: 'scores' });
+});
 
-    const score = user.scores.id(scoreId);
-    if (!score) {
-      return res.status(404).json({ message: 'Score not found' });
-    }
-
-    user.scores.pull(scoreId);
-    await user.save();
-
-    const sortedScores = user.scores.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json(sortedScores);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+export const updateScore = asyncHandler(async (req, res) => {
+  const { value, date } = req.body;
+  const { scoreId } = req.params;
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
   }
-};
+
+  if (value === undefined && date === undefined) {
+    throw new ApiError(400, 'Nothing to update');
+  }
+
+  const score = user.scores.id(scoreId);
+  if (!score) {
+    throw new ApiError(404, 'Score not found');
+  }
+
+  if (value !== undefined) score.value = value;
+  if (date !== undefined) score.date = date;
+
+  await user.save();
+
+  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Score updated successfully', { collectionKey: 'scores' });
+});
+
+export const deleteScore = asyncHandler(async (req, res) => {
+  const { scoreId } = req.params;
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const score = user.scores.id(scoreId);
+  if (!score) {
+    throw new ApiError(404, 'Score not found');
+  }
+
+  user.scores.pull(scoreId);
+  await user.save();
+
+  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Score deleted successfully', { collectionKey: 'scores' });
+});

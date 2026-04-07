@@ -3,209 +3,192 @@ import User from '../models/User.model.js';
 import Subscription from '../models/Subscription.model.js';
 import * as drawService from '../services/draw.service.js';
 import { calculatePrizePool } from '../utils/prizePool.util.js';
+import { ApiError } from '../utils/apiError.js';
+import { sendApiResponse } from '../utils/apiResponse.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { findByIdOrThrow, findLatestUnpublishedDraw } from '../utils/dbHelpers.js';
 
-export const createDraw = async (req, res) => {
-  try {
-    const { month, drawType, forced } = req.body;
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const drawMonth = month || currentMonth;
-    const type = drawType || 'random';
-
-    const existing = await Draw.findOne({ month: drawMonth });
-    if (existing && !forced) {
-      return res.status(400).json({ message: 'Draw already exists for this month' });
-    }
-    if (existing && forced) {
-      return res.status(200).json(existing);
-    }
-    
-    // Calculate subscribers and prize pool
-    const activeSubs = await Subscription.find({ status: 'active' });
-    let participantCount = activeSubs.length;
-
-    let monthlyRevenue = 0;
-    let yearlyRevenue = 0;
-    
-    if (activeSubs.length > 0) {
-      activeSubs.forEach(sub => {
-        // Mocking revenue logic based on plan
-        if (sub.plan === 'monthly') monthlyRevenue += 10;
-        if (sub.plan === 'yearly') yearlyRevenue += 100 / 12; // amortised
-      });
-    } else {
-      const activeUsers = await User.find({ subscriptionStatus: 'active' });
-      participantCount = activeUsers.length;
-      activeUsers.forEach(u => {
-        if (u.subscriptionPlan === 'yearly') yearlyRevenue += 100 / 12;
-        else monthlyRevenue += 10;
-      });
-    }
-
-    const lastDraw = await Draw.findOne().sort({ createdAt: -1 });
-    const rolledOverJackpot = lastDraw ? lastDraw.jackpotRolledOver : 0;
-
-    const prizePool = calculatePrizePool(participantCount, monthlyRevenue, yearlyRevenue, rolledOverJackpot);
-
-    const draw = await Draw.create({
-      month: drawMonth,
-      drawType: type,
-      status: 'draft',
-      prizePool,
-      participantCount
-    });
-
-    res.status(201).json(draw);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+const getRevenueBreakdown = (subscriptions = [], users = []) => {
+  if (subscriptions.length > 0) {
+    return subscriptions.reduce((totals, subscription) => {
+      if (subscription.plan === 'monthly') totals.monthlyRevenue += 10;
+      if (subscription.plan === 'yearly') totals.yearlyRevenue += 100 / 12;
+      return totals;
+    }, { monthlyRevenue: 0, yearlyRevenue: 0, participantCount: subscriptions.length });
   }
+
+  return users.reduce((totals, user) => {
+    if (user.subscriptionPlan === 'yearly') totals.yearlyRevenue += 100 / 12;
+    else totals.monthlyRevenue += 10;
+    totals.participantCount += 1;
+    return totals;
+  }, { monthlyRevenue: 0, yearlyRevenue: 0, participantCount: 0 });
 };
 
-export const simulateDraw = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const draw = id === 'current'
-      ? await Draw.findOne({ status: { $ne: 'published' } }).sort({ createdAt: -1 })
-      : await Draw.findById(id);
+const buildParticipationStatus = (user) => {
+  const hasEnoughScores = user?.scores?.length === 5;
+  const isSubscribed = user?.subscriptionStatus === 'active';
 
-    if (!draw) return res.status(404).json({ message: 'Draw not found' });
-    if (draw.status === 'published') return res.status(400).json({ message: 'Already published' });
-
-    if (draw.drawType === 'random') {
-      draw.drawnNumbers = drawService.generateRandomNumbers();
-    } else {
-      const activeUsers = await User.find({ subscriptionStatus: 'active' });
-      let allScores = [];
-      activeUsers.forEach(u => {
-        if (u.scores && u.scores.length === 5) {
-          allScores = allScores.concat(u.scores.map(s => s.value));
-        }
-      });
-      draw.drawnNumbers = drawService.generateAlgorithmicNumbers(allScores);
-    }
-
-    draw.status = 'simulated';
-    await draw.save();
-
-    const winners = await drawService.calculateWinners(draw._id);
-    draw.winners = winners;
-    await draw.save();
-
-    res.json(draw);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  return {
+    isEligible: hasEnoughScores && isSubscribed,
+    hasEnoughScores,
+    isSubscribed
+  };
 };
 
-export const publishDraw = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const draw = id === 'current'
-      ? await Draw.findOne({ status: { $ne: 'published' } }).sort({ createdAt: -1 })
-      : await Draw.findById(id);
+const getDrawByParam = (id) => (
+  id === 'current'
+    ? findLatestUnpublishedDraw(Draw)
+    : findByIdOrThrow(Draw, id, 'Draw not found')
+);
 
-    if (!draw) return res.status(404).json({ message: 'Draw not found' });
-    if (draw.status === 'published') return res.status(400).json({ message: 'Already published' });
-    if (draw.status !== 'simulated' || !draw.drawnNumbers) {
-       return res.status(400).json({ message: 'Please simulate draw first' });
-    }
+export const createDraw = asyncHandler(async (req, res) => {
+  const { month, drawType, forced } = req.body;
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const drawMonth = month || currentMonth;
+  const type = drawType || 'random';
 
-    draw.status = 'published';
-    draw.publishedAt = new Date();
-
-    const winners = await drawService.calculateWinners(draw._id);
-    draw.winners = winners;
-
-    let hasJackpotWinner = false;
-    
-    // Update users
-    for (const winner of winners) {
-      if (winner.matchCount === 5) hasJackpotWinner = true;
-      const user = await User.findById(winner.userId);
-      if (user) {
-        user.totalWinnings += winner.prizeAmount;
-        await user.save();
-      }
-    }
-
-    if (!hasJackpotWinner) {
-      draw.jackpotRolledOver = draw.prizePool.fiveMatch;
-      const [year, month] = draw.month.split('-').map(Number);
-      const nextMonthDate = new Date(year, month, 1);
-      const nextMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
-      await Draw.findOneAndUpdate(
-        { month: nextMonth },
-        { $inc: { jackpotRolledOver: draw.prizePool.fiveMatch } },
-        { upsert: true, new: true }
-      );
-    } else {
-      draw.jackpotRolledOver = 0;
-    }
-
-    await draw.save();
-    res.json(draw);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  const existing = await Draw.findOne({ month: drawMonth });
+  if (existing && !forced) {
+    throw new ApiError(400, 'Draw already exists for this month');
   }
-};
-
-export const getPublishedDraws = async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
-    const skip = (page - 1) * limit;
-
-    const draws = await Draw.find({ status: 'published' })
-      .sort({ publishedAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    res.json(draws);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  if (existing && forced) {
+    return sendApiResponse(res, 200, existing, 'Draw already exists for this month', { legacy: true });
   }
-};
 
-export const getCurrentDraw = async (req, res) => {
-  try {
-    const draw = await Draw.findOne({ status: { $ne: 'published' } }).sort({ createdAt: -1 });
-    if (!draw) return res.status(404).json({ message: 'No active draw found' });
+  const activeSubs = await Subscription.find({ status: 'active' });
+  const activeUsers = activeSubs.length > 0 ? [] : await User.find({ subscriptionStatus: 'active' });
+  const revenueBreakdown = getRevenueBreakdown(activeSubs, activeUsers);
 
-    const user = await User.findById(req.user._id);
-    const hasEnoughScores = user.scores && user.scores.length === 5;
-    const isSubscribed = user.subscriptionStatus === 'active';
+  const lastDraw = await Draw.findOne().sort({ createdAt: -1 });
+  const rolledOverJackpot = lastDraw ? lastDraw.jackpotRolledOver : 0;
+  const prizePool = calculatePrizePool(
+    revenueBreakdown.participantCount,
+    revenueBreakdown.monthlyRevenue,
+    revenueBreakdown.yearlyRevenue,
+    rolledOverJackpot
+  );
 
-    res.json({
-      draw,
-      userParticipationStatus: {
-        isEligible: hasEnoughScores && isSubscribed,
-        hasEnoughScores,
-        isSubscribed
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  const draw = await Draw.create({
+    month: drawMonth,
+    drawType: type,
+    status: 'draft',
+    prizePool,
+    participantCount: revenueBreakdown.participantCount
+  });
+
+  sendApiResponse(res, 201, draw, 'Draw created successfully', { legacy: true });
+});
+
+export const simulateDraw = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const draw = await getDrawByParam(id);
+
+  if (draw.status === 'published') throw new ApiError(400, 'Already published');
+
+  if (draw.drawType === 'random') {
+    draw.drawnNumbers = drawService.generateRandomNumbers();
+  } else {
+    draw.drawnNumbers = await drawService.generateAlgorithmicNumbersFromDb();
   }
-};
 
-export const uploadWinnerProof = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+  draw.status = 'simulated';
+  await draw.save();
 
-    const { id } = req.params;
-    const draw = await Draw.findById(id);
-    if (!draw) return res.status(404).json({ message: 'Draw not found' });
+  const winners = await drawService.calculateWinners(draw._id);
+  draw.winners = winners;
+  await draw.save();
 
-    const winnerIndex = draw.winners.findIndex(w => w.userId.toString() === req.user._id.toString());
-    if (winnerIndex === -1) {
-      return res.status(403).json({ message: 'You are not a winner of this draw' });
+  sendApiResponse(res, 200, draw, 'Draw simulated successfully', { legacy: true });
+});
+
+export const publishDraw = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const draw = await getDrawByParam(id);
+
+  if (draw.status === 'published') throw new ApiError(400, 'Already published');
+  if (draw.status !== 'simulated' || !draw.drawnNumbers) {
+    throw new ApiError(400, 'Please simulate draw first');
+  }
+
+  draw.status = 'published';
+  draw.publishedAt = new Date();
+
+  const winners = await drawService.calculateWinners(draw._id);
+  draw.winners = winners;
+
+  let hasJackpotWinner = false;
+  for (const winner of winners) {
+    if (winner.matchCount === 5) hasJackpotWinner = true;
+    const user = await User.findById(winner.userId);
+    if (user) {
+      user.totalWinnings += winner.prizeAmount;
+      await user.save();
     }
-
-    draw.winners[winnerIndex].proofUrl = req.file.path;
-    await draw.save();
-
-    res.json(draw.winners[winnerIndex]);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
   }
-};
+
+  if (!hasJackpotWinner) {
+    draw.jackpotRolledOver = draw.prizePool.fiveMatch;
+    const [year, month] = draw.month.split('-').map(Number);
+    const nextMonthDate = new Date(year, month, 1);
+    const nextMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    await Draw.findOneAndUpdate(
+      { month: nextMonth },
+      { $inc: { jackpotRolledOver: draw.prizePool.fiveMatch } },
+      { upsert: true, new: true }
+    );
+  } else {
+    draw.jackpotRolledOver = 0;
+  }
+
+  await draw.save();
+  sendApiResponse(res, 200, draw, 'Draw published successfully', { legacy: true });
+});
+
+export const getPublishedDraws = asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 10;
+  const page = parseInt(req.query.page) || 1;
+  const skip = (page - 1) * limit;
+
+  const draws = await Draw.find({ status: 'published' })
+    .sort({ publishedAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  sendApiResponse(res, 200, draws, 'Draw history loaded successfully', { collectionKey: 'draws' });
+});
+
+export const getCurrentDraw = asyncHandler(async (req, res) => {
+  const draw = await findLatestUnpublishedDraw(Draw);
+  if (!draw) throw new ApiError(404, 'No active draw found');
+
+  const user = await User.findById(req.user._id);
+  sendApiResponse(
+    res,
+    200,
+    {
+      ...draw.toObject(),
+      userParticipationStatus: buildParticipationStatus(user)
+    },
+    'Current draw loaded successfully',
+    { legacy: true }
+  );
+});
+
+export const uploadWinnerProof = asyncHandler(async (req, res) => {
+  if (!req.file) throw new ApiError(400, 'No file uploaded');
+
+  const { id } = req.params;
+  const draw = await findByIdOrThrow(Draw, id, 'Draw not found');
+
+  const winnerIndex = draw.winners.findIndex(w => w.userId.toString() === req.user._id.toString());
+  if (winnerIndex === -1) {
+    throw new ApiError(403, 'You are not a winner of this draw');
+  }
+
+  draw.winners[winnerIndex].proofUrl = `/uploads/proofs/${req.file.filename}`;
+  await draw.save();
+
+  sendApiResponse(res, 200, draw.winners[winnerIndex], 'Winner proof uploaded successfully', { legacy: true });
+});

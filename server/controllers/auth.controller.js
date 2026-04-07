@@ -1,117 +1,117 @@
 import User from '../models/User.model.js';
 import { generateToken } from '../utils/jwt.util.js';
+import { ApiError } from '../utils/apiError.js';
+import { sendApiResponse } from '../utils/apiResponse.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
-export const register = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(409).json({ message: 'Email already in use' });
-    }
-    const user = await User.create({ name, email, password });
-    const token = generateToken(user._id, user.role);
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      subscriptionStatus: user.subscriptionStatus,
-      token,
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({ message: 'Email already in use' });
-    }
-    res.status(500).json({ message: error.message });
-  }
+const buildAuthPayload = (user, token) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  subscriptionStatus: user.subscriptionStatus,
+  token
+});
+
+const buildProfilePayload = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  charityPercentage: user.charityPercentage,
+  selectedCharity: user.selectedCharity
+});
+
+const findUserById = (userId, { includePassword = false, populate = null } = {}) => {
+  let query = User.findById(userId);
+
+  query = includePassword ? query.select('+password') : query.select('-password');
+  if (populate) query = query.populate(populate);
+
+  return query;
 };
 
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email }).select('+password');
-    if (user && (await user.comparePassword(password))) {
-      const token = generateToken(user._id, user.role);
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        subscriptionStatus: user.subscriptionStatus,
-        token,
-      });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+export const register = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
 
-export const getMe = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).populate('selectedCharity').select('-password');
-    if (user) {
-      res.json(user);
-    } else {
-      res.status(404).json({ message: 'User not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    throw new ApiError(409, 'Email already in use');
   }
-};
 
-export const updateProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    user.name = req.body.name || user.name;
-    if (req.body.email && req.body.email !== user.email) {
-      const emailExists = await User.findOne({ email: req.body.email });
-      if (emailExists) {
-         return res.status(400).json({ message: 'Email already in use' });
-      }
-      user.email = req.body.email;
-    }
-    if (req.body.charityPercentage !== undefined) {
-      const pct = Number(req.body.charityPercentage);
-      if (Number.isNaN(pct) || pct < 10 || pct > 100) {
-        return res.status(400).json({ message: 'Charity percentage must be between 10 and 100' });
-      }
-      user.charityPercentage = pct;
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'selectedCharity')) {
-      user.selectedCharity = req.body.selectedCharity || null;
-    }
-    const updatedUser = await user.save();
-    res.json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      charityPercentage: updatedUser.charityPercentage,
-      selectedCharity: updatedUser.selectedCharity,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+  const user = await User.create({ name, email, password });
+  const token = generateToken(user._id, user.role);
 
-export const changePassword = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).select('+password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    const isMatch = await user.comparePassword(req.body.currentPassword);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Incorrect current password' });
-    }
-    user.password = req.body.newPassword;
-    await user.save();
-    res.json({ message: 'Password updated successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  sendApiResponse(res, 201, buildAuthPayload(user, token), 'Account created successfully', { legacy: true });
+});
+
+export const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email }).select('+password');
+
+  if (!user || !(await user.comparePassword(password))) {
+    throw new ApiError(401, 'Invalid email or password');
   }
-};
+
+  const token = generateToken(user._id, user.role);
+
+  sendApiResponse(res, 200, buildAuthPayload(user, token), 'Login successful', { legacy: true });
+});
+
+export const getMe = asyncHandler(async (req, res) => {
+  const user = await findUserById(req.user._id, { populate: 'selectedCharity' });
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  sendApiResponse(res, 200, user, 'Profile loaded successfully', { legacy: true });
+});
+
+export const updateProfile = asyncHandler(async (req, res) => {
+  const user = await findUserById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  user.name = req.body.name || user.name;
+
+  if (req.body.email && req.body.email !== user.email) {
+    const emailExists = await User.findOne({ email: req.body.email });
+    if (emailExists) {
+      throw new ApiError(400, 'Email already in use');
+    }
+    user.email = req.body.email;
+  }
+
+  if (req.body.charityPercentage !== undefined) {
+    const pct = Number(req.body.charityPercentage);
+    if (Number.isNaN(pct) || pct < 10 || pct > 100) {
+      throw new ApiError(400, 'Charity percentage must be between 10 and 100');
+    }
+    user.charityPercentage = pct;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body, 'selectedCharity')) {
+    user.selectedCharity = req.body.selectedCharity || null;
+  }
+
+  const updatedUser = await user.save();
+
+  sendApiResponse(res, 200, buildProfilePayload(updatedUser), 'Profile updated successfully', { legacy: true });
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const user = await findUserById(req.user._id, { includePassword: true });
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const isMatch = await user.comparePassword(req.body.currentPassword);
+  if (!isMatch) {
+    throw new ApiError(401, 'Incorrect current password');
+  }
+
+  user.password = req.body.newPassword;
+  await user.save();
+
+  sendApiResponse(res, 200, null, 'Password updated successfully');
+});
