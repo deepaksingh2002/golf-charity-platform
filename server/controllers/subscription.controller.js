@@ -17,9 +17,9 @@ export const createCheckoutSession = async (req, res) => {
     const resolvedPriceId = resolvePriceId(selectedPlan, priceId);
     let user = await User.findById(req.user._id);
 
-    const isMockStripe = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder');
-    const allowDevMock = process.env.NODE_ENV === 'development' && !resolvedPriceId && plan;
-    if (isMockStripe || allowDevMock) {
+    const hasRealStripeKey = Boolean(process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.includes('placeholder'));
+    const allowMockStripe = process.env.NODE_ENV !== 'production' && !hasRealStripeKey;
+    if (allowMockStripe) {
       const now = Date.now();
       const days = selectedPlan === 'yearly' ? 365 : 30;
       user.subscriptionStatus = 'active';
@@ -33,6 +33,12 @@ export const createCheckoutSession = async (req, res) => {
     if (!resolvedPriceId) {
       return res.status(400).json({
         message: `Missing Stripe price for ${selectedPlan} plan. Set STRIPE_${selectedPlan.toUpperCase()}_PRICE_ID on the backend.`
+      });
+    }
+
+    if (!hasRealStripeKey) {
+      return res.status(500).json({
+        message: 'Stripe is not configured for production. Set STRIPE_SECRET_KEY before enabling subscriptions.'
       });
     }
 

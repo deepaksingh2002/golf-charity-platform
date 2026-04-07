@@ -5,9 +5,3 @@ export const generateToken = (userId, role) => {
     expiresIn: '7d',
   });
 };
-
-export const generateRefreshToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
-};

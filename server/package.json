@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "create:admin": "node scripts/createAdmin.js",
@@ -28,8 +28,6 @@
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
     "multer-storage-cloudinary": "^4.0.0",
-    "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.4",
     "stripe": "^20.4.1"
   }
 }
