@@ -16,7 +16,9 @@ export default function CharitiesPage() {
 
   useEffect(() => {
     if (error) {
-      toast.error(error?.data?.message || 'Failed to load charities');
+      console.error('Charities fetch error:', error);
+      const errorMsg = error?.data?.message || error?.message || 'Failed to load charities. Please try again.';
+      toast.error(errorMsg);
     }
   }, [error]);
 

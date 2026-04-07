@@ -13,7 +13,7 @@ export default function App() {
   const location = useLocation();
 
   // Hydrate auth state once from /auth/me when a persisted token exists.
-  const { data: userData, error, isLoading } = useGetMeQuery(undefined, {
+  const { data: userData, error, isLoading, isFetching } = useGetMeQuery(undefined, {
     skip: !token || !!user, // Skip if no token or user already exists
   });
 
@@ -21,13 +21,15 @@ export default function App() {
     if (userData) {
       dispatch(updateUser(userData));
     }
+    // On 401 or explicit error, logout
     if (error) {
+      console.warn('Auth hydration failed:', error);
       dispatch(logout());
     }
   }, [userData, error, dispatch]);
 
   // Optionally block rendering for protected routes if hydrating
-  const isHydrating = Boolean(token) && !user && isLoading && 
+  const isHydrating = Boolean(token) && !user && (isLoading || isFetching) && 
     (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/admin'));
 
   if (isHydrating) {

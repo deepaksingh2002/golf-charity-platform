@@ -32,10 +32,15 @@ export default function RegisterPage() {
         password: data.password,
       }).unwrap();
       
-      dispatch(setCredentials({ ...res }));
+      // Extract token and user from response
+      const token = res.token;
+      const user = res.user ? res.user : { _id: res._id, name: res.name, email: res.email, role: res.role };
+      
+      dispatch(setCredentials({ user, token }));
       toast.success('Account created! Welcome.');
       navigate('/dashboard', { replace: true });
     } catch (err) {
+      console.error('Registration error:', err);
       toast.error(err?.data?.message || 'Registration failed');
     }
   };
