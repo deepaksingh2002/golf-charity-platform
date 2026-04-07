@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { selectUser, updateUser } from '../../store/slices/authSlice';
-import { useUpdateProfileMutation, useChangePasswordMutation } from '../../store/api/authApiSlice';
+import { useGetMeQuery, useUpdateProfileMutation, useChangePasswordMutation } from '../../store/api/authApiSlice';
 import { User, Mail, Heart, Percent, Lock, Save, Trash2 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -11,24 +11,37 @@ import { Input } from '../../components/ui/Input';
 
 export default function ProfileSettingsPage() {
   const dispatch = useDispatch();
-  const user = useSelector(selectUser);
+  const reduxUser = useSelector(selectUser);
+  const { data: userData, refetch: refetchUser } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const user = userData || reduxUser;
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
-      name: user?.name,
-      email: user?.email,
-      charityPercentage: user?.charityPercentage,
+      name: '',
+      email: '',
+      charityPercentage: 10,
     }
   });
 
   const { register: passRegister, handleSubmit: passSubmit, reset: passReset } = useForm();
 
+  useEffect(() => {
+    if (user) {
+      reset({
+        name: user.name ?? '',
+        email: user.email ?? '',
+        charityPercentage: user.charityPercentage ?? 10,
+      });
+    }
+  }, [user, reset]);
+
   const onUpdateProfile = async (data) => {
     try {
       const res = await updateProfile(data).unwrap();
       dispatch(updateUser(res));
+      refetchUser();
       toast.success('Profile updated successfully!');
     } catch (err) {
       toast.error(err?.data?.message || 'Failed to update profile');

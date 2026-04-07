@@ -12,8 +12,8 @@ export const drawApiSlice = apiSlice.injectEndpoints({
     getDrawHistory: builder.query({
       query: () => '/draws',
       providesTags: (result) =>
-        result && result.draws
-          ? [...result.draws.map(({ _id }) => ({ type: 'Draw', id: _id })), { type: 'Draw', id: 'HISTORY' }]
+        Array.isArray(result)
+          ? [...result.map(({ _id }) => ({ type: 'Draw', id: _id })), { type: 'Draw', id: 'HISTORY' }]
           : [{ type: 'Draw', id: 'HISTORY' }],
     }),
     createDraw: builder.mutation({

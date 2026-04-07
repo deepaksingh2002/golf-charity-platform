@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLoginMutation } from '../../store/api/authApiSlice';
+import { getApiErrorMessage } from '../../store/api/apiUtils';
 import {
   setCredentials,
   selectIsAuthenticated,
@@ -34,13 +35,19 @@ export default function LoginPage() {
     try {
       const res = await login(data).unwrap();
       const token = res.token;
-      const user = res.user ? res.user : { _id: res._id, name: res.name, email: res.email, role: res.role };
+      const user = res.user || {
+        _id: res._id,
+        name: res.name,
+        email: res.email,
+        role: res.role,
+        subscriptionStatus: res.subscriptionStatus,
+      };
       
       dispatch(setCredentials({ user, token }));
       toast.success('Welcome back!');
       navigate(redirectPath || (user?.role === 'admin' ? '/admin' : '/dashboard'), { replace: true });
     } catch (err) {
-      toast.error(err?.data?.message || 'Login failed');
+      toast.error(getApiErrorMessage(err, 'Login failed'));
     }
   };
 

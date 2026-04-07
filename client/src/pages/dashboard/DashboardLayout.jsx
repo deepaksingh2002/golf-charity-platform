@@ -5,10 +5,13 @@ import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Sh
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { logout, selectIsAdmin, selectUser } from '../../store/slices/authSlice';
+import { useGetMeQuery } from '../../store/api/authApiSlice';
 
 export default function DashboardLayout() {
   const dispatch = useDispatch();
-  const user = useSelector(selectUser);
+  const reduxUser = useSelector(selectUser);
+  const { data: userData } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const user = userData || reduxUser;
   const isAdmin = useSelector(selectIsAdmin);
   const navigate = useNavigate();
 

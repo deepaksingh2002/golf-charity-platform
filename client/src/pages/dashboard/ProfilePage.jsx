@@ -3,9 +3,21 @@ import { selectUser } from '../../store/slices/authSlice';
 import { User, Mail, Shield, Heart, Percent, Calendar } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
+import { Spinner } from '../../components/ui/Spinner';
+import { useGetMeQuery } from '../../store/api/authApiSlice';
 
 export default function ProfilePage() {
-  const user = useSelector(selectUser);
+  const reduxUser = useSelector(selectUser);
+  const { data: userData, isLoading } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const user = userData || reduxUser;
+
+  if (reduxUser && !userData && isLoading) {
+    return (
+      <div className="flex justify-center p-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   if (!user) return null;
 

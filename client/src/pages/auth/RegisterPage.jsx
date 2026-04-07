@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRegisterMutation } from '../../store/api/authApiSlice';
+import { getApiErrorMessage } from '../../store/api/apiUtils';
 import {
   setCredentials,
   selectIsAuthenticated,
@@ -36,13 +37,19 @@ export default function RegisterPage() {
       }).unwrap();
       
       const token = res.token;
-      const user = res.user ? res.user : { _id: res._id, name: res.name, email: res.email, role: res.role };
+      const user = res.user || {
+        _id: res._id,
+        name: res.name,
+        email: res.email,
+        role: res.role,
+        subscriptionStatus: res.subscriptionStatus,
+      };
       
       dispatch(setCredentials({ user, token }));
       toast.success('Account created! Welcome.');
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      toast.error(err?.data?.message || 'Registration failed');
+      toast.error(getApiErrorMessage(err, 'Registration failed'));
     }
   };
 

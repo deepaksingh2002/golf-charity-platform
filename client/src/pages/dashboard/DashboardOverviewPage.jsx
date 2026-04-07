@@ -4,6 +4,17 @@ import { useGetScoresQuery } from '../../store/api/scoreApiSlice';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 import { useGetMeQuery } from '../../store/api/authApiSlice';
 
+const formatRenewDate = (subData) => {
+  const rawValue = subData?.renewDate ?? subData?.stripeData?.current_period_end;
+  if (!rawValue) return null;
+
+  const date = typeof rawValue === 'number' && rawValue < 10_000_000_000
+    ? new Date(rawValue * 1000)
+    : new Date(rawValue);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 export default function DashboardOverviewPage() {
   const reduxUser = useSelector(selectUser);
   const { data: userData } = useGetMeQuery(undefined, { skip: !reduxUser });
@@ -13,7 +24,7 @@ export default function DashboardOverviewPage() {
   
   const scores = Array.isArray(scoresResponse) ? scoresResponse : scoresResponse?.scores || [];
   const subStatus = subData?.status || user?.subscriptionStatus || 'inactive';
-  const renewDate = subData?.currentPeriodEnd;
+  const renewDate = formatRenewDate(subData);
   
   if (!user) return <div className="flex justify-center p-12">Loading...</div>;
 
@@ -28,7 +39,7 @@ export default function DashboardOverviewPage() {
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold text-zinc-900">Welcome, {user?.name ?? 'Player'}</h1>
-        <p className="mt-1 text-sm text-zinc-500">Subscription renews: {renewDate ? new Date(renewDate).toLocaleDateString('en-GB') : 'No renewal date'}</p>
+        <p className="mt-1 text-sm text-zinc-500">Subscription renews: {renewDate ? renewDate.toLocaleDateString('en-GB') : 'No renewal date'}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

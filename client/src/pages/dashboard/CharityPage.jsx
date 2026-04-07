@@ -1,16 +1,28 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useGetMeQuery, useUpdateProfileMutation } from '../../store/api/authApiSlice';
 import { useGetCharitiesQuery } from '../../store/api/charityApiSlice';
+import { Spinner } from '../../components/ui/Spinner';
 
 export default function CharityPage() {
   const reduxUser = useSelector(selectUser);
-  const { data: userData, refetch: refetchUser } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const {
+    data: userData,
+    refetch: refetchUser,
+    isLoading: loadingUser,
+    error: userError,
+  } = useGetMeQuery(undefined, { skip: !reduxUser });
   const user = userData || reduxUser;
   
-  const { data: charitiesResponse, isLoading: loadingCharities } = useGetCharitiesQuery();
+  const {
+    data: charitiesResponse,
+    isLoading: loadingCharities,
+    error: charitiesError,
+  } = useGetCharitiesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const charities = useMemo(() => {
     const data = charitiesResponse?.charities || charitiesResponse || [];
     return Array.isArray(data) ? data : [];
@@ -22,6 +34,15 @@ export default function CharityPage() {
 
   const [localPct, setLocalPct] = useState(null);
   const [localSelectedId, setLocalSelectedId] = useState(null);
+
+  useEffect(() => {
+    if (userError) {
+      toast.error(userError?.data?.message || 'Failed to load your profile');
+    }
+    if (charitiesError) {
+      toast.error(charitiesError?.data?.message || 'Failed to load charities');
+    }
+  }, [userError, charitiesError]);
 
   const pct = localPct !== null ? localPct : (user?.charityPercentage ?? 10);
   const selectedId = localSelectedId !== null 
@@ -50,6 +71,12 @@ export default function CharityPage() {
         <h1 className="text-2xl font-semibold text-zinc-900">My charity</h1>
         <p className="mt-1 text-sm text-zinc-500">Choose who benefits from your subscription</p>
       </div>
+
+      {reduxUser && loadingUser && !userData ? (
+        <div className="flex justify-center py-12">
+          <Spinner size="lg" />
+        </div>
+      ) : null}
 
       <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
         <div>

@@ -29,7 +29,10 @@ export default function AdminUserDetailPage() {
 
   const handleUpdateSub = async (status) => {
     try {
-      await updateSubscription({ userId: id, subscriptionStatus: status }).unwrap();
+      await updateSubscription({
+        userId: id,
+        action: status === 'active' ? 'activate' : 'cancel',
+      }).unwrap();
       toast.success('Subscription updated successfully');
     } catch (err) {
       toast.error(err?.data?.message || 'Failed to update subscription');
