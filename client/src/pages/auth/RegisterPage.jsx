@@ -8,6 +8,9 @@ import {
   setCredentials,
   selectIsAuthenticated,
 } from '../../store/slices/authSlice';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { Trophy } from 'lucide-react';
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
@@ -18,7 +21,6 @@ export default function RegisterPage() {
 
   const [registerAccount, { isLoading }] = useRegisterMutation();
 
-  // deps: [isAuthenticated, navigate] redirects newly created accounts into the dashboard.
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
@@ -33,7 +35,6 @@ export default function RegisterPage() {
         password: data.password,
       }).unwrap();
       
-      // Extract token and user from response
       const token = res.token;
       const user = res.user ? res.user : { _id: res._id, name: res.name, email: res.email, role: res.role };
       
@@ -41,90 +42,95 @@ export default function RegisterPage() {
       toast.success('Account created! Welcome.');
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      console.error('Registration error:', err);
       toast.error(err?.data?.message || 'Registration failed');
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-3xl font-bold text-white">Create account</h1>
-          <p className="text-zinc-400">Join the Golf Charity Platform</p>
+    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 relative overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 right-0 w-full h-full opacity-20 pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-500/20 blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-violet-500/20 blur-[120px]" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10 py-12">
+        <div className="mb-10 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-emerald-600 text-white mb-6 shadow-2xl shadow-emerald-500/20 -rotate-3">
+             <Trophy size={32} />
+          </div>
+          <h1 className="text-4xl font-black text-white tracking-tight">Create Account</h1>
+          <p className="text-zinc-500 mt-2 font-medium tracking-wide">Join our community of golf enthusiasts and donors</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-300">Full name</label>
-              <input
-                type="text"
-                placeholder="Your name"
-                {...register('name', { required: 'Name is required' })}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              {errors.name ? <p className="mt-1.5 text-sm text-red-400">{errors.name.message}</p> : null}
-            </div>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-300">Email</label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                {...register('email', { required: 'Email is required' })}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              {errors.email ? <p className="mt-1.5 text-sm text-red-400">{errors.email.message}</p> : null}
-            </div>
+        <div className="rounded-[32px] border border-zinc-800 bg-zinc-900/50 backdrop-blur-xl p-8 md:p-10 shadow-2xl shadow-black/50">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <Input
+              label="Full Name"
+              type="text"
+              placeholder="Deepak Singh"
+              error={errors.name?.message}
+              {...register('name', { required: 'Name is required' })}
+              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+            />
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-300">Password</label>
-              <input
-                type="password"
-                placeholder="........"
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: { value: 8, message: 'Password must be at least 8 characters' },
-                })}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              {errors.password ? <p className="mt-1.5 text-sm text-red-400">{errors.password.message}</p> : null}
-            </div>
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="name@example.com"
+              error={errors.email?.message}
+              {...register('email', { required: 'Email is required' })}
+              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+            />
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-300">Confirm password</label>
-              <input
-                type="password"
-                placeholder="........"
-                {...register('confirmPassword', {
-                  required: 'Please confirm your password',
-                  validate: (value) => value === password || "Passwords don't match",
-                })}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              {errors.confirmPassword ? <p className="mt-1.5 text-sm text-red-400">{errors.confirmPassword.message}</p> : null}
-            </div>
+            <Input
+              label="Secure Password"
+              type="password"
+              placeholder="••••••••"
+              error={errors.password?.message}
+              {...register('password', { 
+                required: 'Password is required',
+                minLength: { value: 8, message: 'Password must be at least 8 characters' }
+              })}
+              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+            />
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500"
-            >
-              {isLoading ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Creating account...
-                </>
-              ) : 'Create account'}
-            </button>
+            <Input
+              label="Confirm Password"
+              type="password"
+              placeholder="••••••••"
+              error={errors.confirmPassword?.message}
+              {...register('confirmPassword', { 
+                required: 'Please confirm your password',
+                validate: (value) => value === password || "Passwords don't match",
+              })}
+              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+            />
+
+            <div className="pt-2">
+              <Button
+                type="submit"
+                loading={isLoading}
+                className="w-full py-4 text-lg font-bold rounded-2xl bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-500/10"
+              >
+                Launch Account
+              </Button>
+            </div>
           </form>
-          <p className="mt-6 text-center text-sm text-zinc-500">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-emerald-400 hover:text-emerald-300">
-              Sign in
-            </Link>
-          </p>
+
+          <div className="mt-8 pt-8 border-t border-zinc-800/50 text-center">
+             <p className="text-sm text-zinc-500 font-medium">
+               Already have an account?{' '}
+               <Link to="/login" className="text-emerald-400 hover:text-emerald-300 font-bold ml-1 transition-colors">
+                 Sign in instead
+               </Link>
+             </p>
+          </div>
         </div>
+        
+        <p className="mt-8 text-center text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+          Join the Movement • 100% Secure End-to-End
+        </p>
       </div>
     </div>
   );
