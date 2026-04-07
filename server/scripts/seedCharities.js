@@ -21,9 +21,10 @@ const run = async () => {
     console.log('Charities seeded or updated');
   } catch (err) {
     console.error(err);
+    process.exitCode = 1;
   } finally {
     await mongoose.disconnect();
-    process.exit(0);
+    process.exit(process.exitCode || 0);
   }
 };
 
