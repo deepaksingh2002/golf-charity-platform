@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useGetAllUsersQuery } from '../../store/api/adminApiSlice';
-import { Search, ChevronLeft, ChevronRight, User, Mail, Shield, CreditCard, ExternalLink } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, User, Mail, Shield, CreditCard, ExternalLink, Users } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Link } from 'react-router-dom';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
@@ -18,10 +19,13 @@ export default function AdminUsersPage() {
 
   if (error) {
     return (
-      <div className="p-6 rounded-xl border border-red-200 bg-red-50 text-red-700">
-        <h3 className="font-bold">Error loading users</h3>
-        <p className="text-sm">{error?.data?.message || 'Please check your connection and permissions.'}</p>
-      </div>
+      <EmptyState 
+        icon={Users}
+        title="Failed to load users"
+        description={error?.data?.message || "Please check your connection and try again."}
+        actionLabel="Retry Connection"
+        onAction={() => window.location.reload()}
+      />
     );
   }
 
@@ -29,7 +33,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900">User Management</h1>
+          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">User Management</h1>
           <p className="text-zinc-500 mt-1">Manage and monitor platform members.</p>
         </div>
         <div className="relative max-w-sm w-full">
@@ -42,74 +46,79 @@ export default function AdminUsersPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+            className="w-full pl-10 pr-4 py-3 rounded-2xl border border-zinc-200 bg-white text-sm focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all outline-none shadow-sm"
           />
         </div>
       </div>
 
-      <Card className="overflow-hidden border-zinc-200 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-zinc-50/50 border-b border-zinc-100">
-                <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">User</th>
-                <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Plan</th>
-                <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Joined</th>
-                <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center">
-                    <Spinner size="md" className="mx-auto" />
-                  </td>
+      <Card className="overflow-hidden border-zinc-200 shadow-xl shadow-zinc-500/5">
+        <div className="overflow-x-auto min-h-[400px]">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-96">
+              <Spinner size="lg" />
+            </div>
+          ) : users.length > 0 ? (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-zinc-50/50 border-b border-zinc-100">
+                  <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">User</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Plan</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Joined</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
-              ) : users.length > 0 ? (
-                users.map((user) => (
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {users.map((user) => (
                   <tr key={user._id} className="hover:bg-zinc-50/50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs uppercase">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-lg shadow-emerald-500/20">
                           {user.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-semibold text-zinc-900 leading-none">{user.name}</p>
-                          <p className="text-xs text-zinc-500 mt-1">{user.email}</p>
+                          <p className="font-bold text-zinc-900 leading-none">{user.name}</p>
+                          <p className="text-xs text-zinc-500 mt-1.5">{user.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 capitalize text-xs font-medium text-zinc-700">
-                        <Shield size={14} className={user.role === 'admin' ? 'text-violet-500' : 'text-zinc-400'} />
+                      <div className="flex items-center gap-2 capitalize text-xs font-bold text-zinc-600">
+                        <Shield size={14} className={user.role === 'admin' ? 'text-violet-500' : 'text-zinc-300'} />
                         {user.role}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <Badge variant={user.subscriptionStatus === 'active' ? 'active' : 'inactive'}>
-                        {user.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
+                        {user.subscriptionStatus === 'active' ? 'ACTIVE MEMBER' : 'INACTIVE'}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 text-sm text-zinc-500">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                    <td className="px-6 py-4 text-xs font-bold text-zinc-500">
+                      {new Date(user.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                         Details <ExternalLink size={14} className="ml-1" />
-                      </Button>
+                      <Link to={`/admin/users/${user._id}`}>
+                        <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-all border-zinc-200 text-zinc-600">
+                           Details <ExternalLink size={14} className="ml-2" />
+                        </Button>
+                      </Link>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-zinc-500">
-                    No users found matching your criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="flex items-center justify-center h-96">
+              <EmptyState 
+                icon={Search}
+                title="No members match"
+                description={`We couldn't find any users matching "${search}". Try a different name or email.`}
+                actionLabel="Clear Search"
+                onAction={() => setSearch('')}
+                className="border-none bg-transparent"
+              />
+            </div>
+          )}
         </div>
 
         {/* Pagination */}
