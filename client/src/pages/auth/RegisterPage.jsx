@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,7 +13,8 @@ export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  const { register, handleSubmit, watch, formState: { errors } } = useForm();
+  const { register, handleSubmit, control, formState: { errors } } = useForm();
+  const password = useWatch({ control, name: 'password' });
 
   const [registerAccount, { isLoading }] = useRegisterMutation();
 
@@ -97,7 +98,7 @@ export default function RegisterPage() {
                 placeholder="........"
                 {...register('confirmPassword', {
                   required: 'Please confirm your password',
-                  validate: (value) => value === watch('password') || "Passwords don't match",
+                  validate: (value) => value === password || "Passwords don't match",
                 })}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />

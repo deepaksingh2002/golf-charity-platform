@@ -6,7 +6,6 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 
-// Routes
 import authRoutes from './routes/auth.routes.js';
 import scoreRoutes from './routes/score.routes.js';
 import charityRoutes from './routes/charity.routes.js';
@@ -14,7 +13,6 @@ import subscriptionRoutes from './routes/subscription.routes.js';
 import drawRoutes from './routes/draw.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 
-// Controller for standalone webhook usage
 import { handleWebhook } from './controllers/subscription.controller.js';
 
 const app = express();
@@ -23,21 +21,24 @@ app.set('trust proxy', 1);
 
 connectDB();
 
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  process.env.CLIENT_URLS,
-  process.env.CORS_ORIGINS,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:3000'
-]
-  .filter(Boolean)
-  .join(',')
-  .split(',')
-  .map(o => o.trim())
-  .filter(Boolean);
-
 const normalizeOrigin = (value) => value?.trim().replace(/\/+$/, '').toLowerCase();
+
+const parseOrigins = (...values) =>
+  [...new Set(
+    values
+      .filter(Boolean)
+      .flatMap(value => String(value).split(','))
+      .map(origin => origin.trim())
+      .filter(Boolean)
+      .map(origin => normalizeOrigin(origin))
+  )];
+
+const allowedOrigins = parseOrigins(
+  process.env.CORS_ORIGINS,
+  ...(process.env.NODE_ENV !== 'production'
+    ? ['http://localhost:5173']
+    : [])
+);
 
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
@@ -64,7 +65,6 @@ const isOriginAllowed = (origin) => {
 const corsOptions = {
   origin: (origin, callback) => {
     if (isOriginAllowed(origin)) {
-      // Return the exact request origin to avoid comma-joined values.
       return callback(null, origin || true);
     }
     console.log('CORS blocked origin:', origin);
@@ -76,11 +76,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
 app.use(helmet());
 app.use(morgan('dev'));
 
-// Webhook needs raw body - MUST be before express.json()
 app.post('/api/subscriptions/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
 app.use(express.json());
@@ -91,8 +89,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     port: process.env.PORT,
-    mongoConnected: mongoose.connection.readyState === 1,
-    corsOrigin: process.env.CLIENT_URL
+    mongoConnected: mongoose.connection.readyState === 1
   });
 });
 
