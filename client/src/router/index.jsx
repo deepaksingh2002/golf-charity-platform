@@ -31,6 +31,7 @@ const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage'));
 const AdminDrawsPage = lazy(() => import('../pages/admin/AdminDrawsPage'));
 const AdminCharitiesPage = lazy(() => import('../pages/admin/AdminCharitiesPage'));
 const AdminWinnersPage = lazy(() => import('../pages/admin/AdminWinnersPage'));
+const AdminUserDetailPage = lazy(() => import('../pages/admin/AdminUserDetailPage'));
 
 export const router = createBrowserRouter([
   {
@@ -120,6 +121,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <AdminDashboardPage /> },
           { path: "users", element: <AdminUsersPage /> },
+          { path: "users/:id", element: <AdminUserDetailPage /> },
           { path: "draws", element: <AdminDrawsPage /> },
           { path: "charities", element: <AdminCharitiesPage /> },
           { path: "winners", element: <AdminWinnersPage /> },
