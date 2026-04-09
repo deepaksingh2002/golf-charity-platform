@@ -26,10 +26,12 @@ const scoreUpdateValidationRules = [
 ];
 
 router.use(protect);
+
+router.get('/', getScores);
+
 router.use(subscriberOnly);
 
 router.post('/', scoreValidationRules, validate, addScore);
-router.get('/', getScores);
 router.put('/:scoreId', scoreUpdateValidationRules, validate, updateScore);
 router.delete('/:scoreId', deleteScore);
 

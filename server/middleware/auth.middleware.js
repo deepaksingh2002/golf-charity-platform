@@ -31,7 +31,7 @@ export const adminOnly = (req, res, next) => {
 };
 
 export const subscriberOnly = (req, res, next) => {
-  if (req.user && req.user.subscriptionStatus === 'active') {
+  if (req.user && (req.user.subscriptionStatus === 'active' || req.user.role === 'admin')) {
     next();
   } else {
     res.status(403).json({ message: 'Active subscription required' });
