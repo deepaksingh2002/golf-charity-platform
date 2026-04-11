@@ -26,7 +26,10 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
         body,
       }),
-      invalidatesTags: (result, error, { scoreId }) => [{ type: 'Score', id: scoreId }],
+      invalidatesTags: (result, error, { userId, scoreId }) => [
+        { type: 'User', id: userId },
+        { type: 'Score', id: scoreId },
+      ],
     }),
     manageUserSubscription: builder.mutation({
       query: ({ userId, ...body }) => ({

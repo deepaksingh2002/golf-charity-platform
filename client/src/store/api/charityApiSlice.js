@@ -3,10 +3,20 @@ import { apiSlice } from './apiSlice';
 export const charityApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getCharities: builder.query({
-      query: (search) => ({
-        url: '/charities',
-        params: search ? { search } : {},
-      }),
+      query: (queryArg) => {
+        let params = {};
+
+        if (typeof queryArg === 'string') {
+          params = queryArg ? { search: queryArg } : {};
+        } else if (queryArg && typeof queryArg === 'object') {
+          params = queryArg;
+        }
+
+        return {
+          url: '/charities',
+          params,
+        };
+      },
       providesTags: (result) => {
         const charitiesList = Array.isArray(result) ? result : result?.charities || [];
         return [

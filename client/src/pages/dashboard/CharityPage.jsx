@@ -20,7 +20,7 @@ export default function CharityPage() {
     data: charitiesResponse,
     isLoading: loadingCharities,
     error: charitiesError,
-  } = useGetCharitiesQuery(undefined, {
+  } = useGetCharitiesQuery({ limit: 100, page: 1 }, {
     refetchOnMountOrArgChange: true,
   });
   const charities = useMemo(() => {
@@ -86,18 +86,24 @@ export default function CharityPage() {
 
         <div>
           <label className="mb-2 block text-xs text-zinc-500">Select a charity</label>
-          <select
-            value={selectedId}
-            onChange={(event) => setLocalSelectedId(event.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-          >
-            <option value="">Select a charity</option>
-            {(charities ?? []).map((charity) => (
-              <option key={charity?._id ?? charity?.name} value={charity?._id}>
-                {charity?.name ?? 'Unknown charity'}
-              </option>
-            ))}
-          </select>
+          {(charities ?? []).length > 0 ? (
+            <select
+              value={selectedId}
+              onChange={(event) => setLocalSelectedId(event.target.value)}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">Select a charity</option>
+              {(charities ?? []).map((charity) => (
+                <option key={charity?._id ?? charity?.name} value={charity?._id}>
+                  {charity?.name ?? 'Unknown charity'}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-300">
+              No active charities available yet.
+            </p>
+          )}
         </div>
 
         <div>
@@ -114,7 +120,7 @@ export default function CharityPage() {
 
         <button
           onClick={handleSave}
-          disabled={saving || loading || !selectedId}
+          disabled={saving || loading || !selectedId || (charities ?? []).length === 0}
           className="min-h-[44px] rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700"
         >
           {saving ? 'Saving...' : 'Save Preference'}

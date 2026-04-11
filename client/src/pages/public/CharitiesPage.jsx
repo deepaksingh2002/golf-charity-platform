@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, HeartPulse } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -9,7 +9,22 @@ import { useGetCharitiesQuery } from '../../store/api/charityApiSlice';
 
 export default function CharitiesPage() {
   const [search, setSearch] = useState('');
-  const { data: charitiesResponse, isLoading: loading, error } = useGetCharitiesQuery(search);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const {
+    data: charitiesResponse,
+    isLoading: loading,
+    isFetching,
+    error,
+  } = useGetCharitiesQuery(debouncedSearch);
   const charities = Array.isArray(charitiesResponse) ? charitiesResponse : charitiesResponse?.charities || [];
 
   return (
@@ -27,6 +42,10 @@ export default function CharitiesPage() {
           />
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
         </div>
+
+        {isFetching && !loading ? (
+          <p className="mb-6 text-sm text-zinc-500">Searching partners...</p>
+        ) : null}
 
         {loading ? (
           <div className="flex justify-center py-32"><Spinner size="lg" /></div>

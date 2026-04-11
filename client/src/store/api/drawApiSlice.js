@@ -22,21 +22,25 @@ export const drawApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: [{ type: 'Draw', id: 'LIST' }, { type: 'Draw', id: 'HISTORY' }],
+      invalidatesTags: [{ type: 'Draw', id: 'CURRENT' }, { type: 'Draw', id: 'HISTORY' }],
     }),
     simulateDraw: builder.mutation({
       query: (id) => ({
         url: `/draws/${id}/simulate`,
         method: 'POST',
       }),
-      invalidatesTags: [{ type: 'Draw', id: 'LIST' }],
+      invalidatesTags: (result, error, id) => [{ type: 'Draw', id }, { type: 'Draw', id: 'CURRENT' }],
     }),
     publishDraw: builder.mutation({
       query: (id) => ({
         url: `/draws/${id}/publish`,
         method: 'POST',
       }),
-      invalidatesTags: [{ type: 'Draw', id: 'LIST' }, { type: 'Draw', id: 'HISTORY' }],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Draw', id },
+        { type: 'Draw', id: 'CURRENT' },
+        { type: 'Draw', id: 'HISTORY' },
+      ],
     }),
     uploadProof: builder.mutation({
       query: ({ id, body }) => ({
