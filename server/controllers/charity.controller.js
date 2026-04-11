@@ -32,7 +32,7 @@ export const getCharities = asyncHandler(async (req, res) => {
     Charity.find(query)
     .sort({ isFeatured: -1, createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit),
     Charity.countDocuments(query),
   ]);
 
