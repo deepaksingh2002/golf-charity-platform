@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield, User as UserIcon, Settings } from 'lucide-react';
+import { House, LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, LogOut, Shield, User as UserIcon, Settings } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { logout, selectIsAdmin, selectUser } from '../../store/slices/authSlice';
@@ -58,7 +58,16 @@ export default function DashboardLayout() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden lg:pl-64">
         <header className="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-6 z-30 shrink-0">
-          <div className="lg:hidden text-xl font-bold text-zinc-900 tracking-tight">Golf<span className="text-emerald-500">Charity</span></div>
+          <div className="flex items-center gap-3">
+            <div className="lg:hidden text-xl font-bold text-zinc-900 tracking-tight">Golf<span className="text-emerald-500">Charity</span></div>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              <House size={16} />
+              <span>Home</span>
+            </Link>
+          </div>
           <div className="ml-auto flex items-center space-x-4">
             {isAdmin && (
               <Link
@@ -88,6 +97,13 @@ export default function DashboardLayout() {
 
       {/* Mobile Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-zinc-200 z-50 flex items-center justify-around px-2 py-2 pb-safe">
+         <Link
+           to="/"
+           className="flex flex-col items-center justify-center w-full py-1 text-zinc-500 hover:text-zinc-900"
+         >
+           <House size={20} />
+           <span className="text-[10px] mt-1 font-medium">Home</span>
+         </Link>
          {navItems.map(item => (
             <NavLink
               key={item.path} to={item.path} end={item.path === '/dashboard'}

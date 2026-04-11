@@ -1,15 +1,32 @@
 import { useSelector } from 'react-redux';
-import { selectUser } from '../../store/slices/authSlice';
+import { hasAdminAccess, selectUser } from '../../store/slices/authSlice';
 import { User, Mail, Shield, Heart, Percent, Calendar } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { useGetMeQuery } from '../../store/api/authApiSlice';
 
+function resolveDisplayRole(user) {
+  if (!user) return 'user';
+  if (hasAdminAccess(user)) return 'admin';
+
+  if (typeof user.role === 'string' && user.role.trim()) {
+    return user.role.toLowerCase();
+  }
+
+  if (Array.isArray(user.roles) && user.roles.length > 0) {
+    const firstRole = user.roles.find((roleEntry) => typeof roleEntry === 'string' && roleEntry.trim());
+    if (firstRole) return firstRole.toLowerCase();
+  }
+
+  return 'user';
+}
+
 export default function ProfilePage() {
   const reduxUser = useSelector(selectUser);
   const { data: userData, isLoading } = useGetMeQuery(undefined, { skip: !reduxUser });
   const user = userData || reduxUser;
+  const displayRole = resolveDisplayRole(user);
 
   if (reduxUser && !userData && isLoading) {
     return (
@@ -54,7 +71,7 @@ export default function ProfilePage() {
               <span className="text-sm font-medium text-zinc-400 uppercase tracking-wider">Account Role</span>
               <div className="flex items-center gap-2 text-zinc-900 font-semibold">
                 <Shield size={18} className="text-violet-500" />
-                <span className="capitalize">{user.role}</span>
+                <span className="capitalize">{displayRole}</span>
               </div>
             </div>
             <div className="space-y-1">

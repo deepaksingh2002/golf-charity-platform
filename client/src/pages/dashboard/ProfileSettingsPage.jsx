@@ -8,6 +8,7 @@ import { User, Mail, Heart, Percent, Lock, Save, Trash2 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { getApiErrorMessage } from '../../store/api/apiUtils';
 
 export default function ProfileSettingsPage() {
   const dispatch = useDispatch();
@@ -44,7 +45,7 @@ export default function ProfileSettingsPage() {
       refetchUser();
       toast.success('Profile updated successfully!');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to update profile');
+      toast.error(getApiErrorMessage(err, 'Failed to update profile'));
     }
   };
 
@@ -54,7 +55,7 @@ export default function ProfileSettingsPage() {
       toast.success('Password updated successfully!');
       passReset();
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to update password');
+      toast.error(getApiErrorMessage(err, 'Failed to update password'));
     }
   };
 

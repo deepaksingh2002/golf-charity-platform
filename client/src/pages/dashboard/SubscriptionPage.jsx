@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useGetSubscriptionStatusQuery, useCreateCheckoutSessionMutation, useCancelSubscriptionMutation } from '../../store/api/subscriptionApiSlice';
+import { useGetSubscriptionStatusQuery, useSubscribeMutation, useCancelSubscriptionMutation } from '../../store/api/subscriptionApiSlice';
 import { useGetMeQuery } from '../../store/api/authApiSlice';
 import { getApiErrorMessage } from '../../store/api/apiUtils';
 import { loadStripe } from '@stripe/stripe-js';
@@ -89,7 +89,7 @@ const PaymentForm = ({ onSuccess, onCancel, planLabel }) => {
 export default function SubscriptionPage() {
   const { data: subData, isLoading: loadingStatus, error: statusError } = useGetSubscriptionStatusQuery();
   const { refetch: refetchUser } = useGetMeQuery();
-  const [createCheckoutSession, { isLoading: isCreating }] = useCreateCheckoutSessionMutation();
+  const [subscribe, { isLoading: isCreating }] = useSubscribeMutation();
   const [cancelSubscription, { isLoading: isCanceling }] = useCancelSubscriptionMutation();
   const [clientSecret, setClientSecret] = useState('');
   const [pendingPlan, setPendingPlan] = useState('');
@@ -108,7 +108,7 @@ export default function SubscriptionPage() {
 
   const handleSubscribe = async (selectedPlan) => {
     try {
-      const result = await createCheckoutSession(selectedPlan).unwrap();
+      const result = await subscribe(selectedPlan).unwrap();
 
       if (result?.clientSecret) {
         setPendingPlan(result.plan || selectedPlan);

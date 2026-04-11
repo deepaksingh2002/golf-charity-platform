@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../../store/slices/authSlice';
 import { useGetCharityByIdQuery } from '../../store/api/charityApiSlice';
+import { getApiErrorMessage } from '../../store/api/apiUtils';
 
 export default function CharityDetailPage() {
   const { id } = useParams();
@@ -17,7 +18,7 @@ export default function CharityDetailPage() {
 
   useEffect(() => {
     if (error) {
-      toast.error(error?.data?.message || 'Failed to load charity details');
+      toast.error(getApiErrorMessage(error, 'Failed to load charity details'));
     }
   }, [error]);
 
@@ -34,7 +35,7 @@ export default function CharityDetailPage() {
       <div className="relative flex h-[60vh] flex-col justify-end bg-zinc-900">
         <div className="absolute inset-0">
           <img src={charity?.imageUrl || 'https://images.unsplash.com/photo-1593113511475-680f4f9547d5?w=1600'} alt={charity?.name ?? 'Charity hero'} className="h-full w-full object-cover opacity-50" />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
         </div>
         <div className="relative mx-auto w-full max-w-7xl px-6 pb-16">
           {charity?.isFeatured ? <span className="mb-4 inline-block rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">FEATURED PARTNER</span> : null}

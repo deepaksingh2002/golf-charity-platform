@@ -5,11 +5,15 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Spinner } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { PaginationControls } from '../../components/ui/PaginationControls';
 import { useGetCharitiesQuery } from '../../store/api/charityApiSlice';
+import { normalizeApiList } from '../../store/api/apiUtils';
 
 export default function CharitiesPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 9;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -19,13 +23,21 @@ export default function CharitiesPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const {
     data: charitiesResponse,
     isLoading: loading,
     isFetching,
     error,
-  } = useGetCharitiesQuery(debouncedSearch);
-  const charities = Array.isArray(charitiesResponse) ? charitiesResponse : charitiesResponse?.charities || [];
+  } = useGetCharitiesQuery({ search: debouncedSearch, page, limit: pageSize });
+  const charities = normalizeApiList(charitiesResponse, 'charities');
+  const totalCharities = charitiesResponse?.total ?? charities.length;
+  const totalPages = charitiesResponse?.pages ?? 1;
+  const canGoPrevious = page > 1;
+  const canGoNext = page < totalPages;
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 pt-32 animate-in fade-in duration-700">
@@ -58,35 +70,48 @@ export default function CharitiesPage() {
             onAction={() => window.location.reload()}
           />
         ) : charities.length > 0 ? (
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {charities.map((charity) => (
-              <Card key={charity?._id ?? charity?.name} className="flex flex-col group overflow-hidden border-zinc-100 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 rounded-3xl">
-                <div className="relative h-56 overflow-hidden bg-zinc-200">
-                  {charity?.isFeatured && (
-                    <div className="absolute left-4 top-4 z-10 rounded-xl bg-violet-600 px-4 py-1.5 text-[10px] font-black text-white shadow-lg shadow-violet-500/20">FEATURED</div>
-                  )}
-                  {charity?.imageUrl ? (
-                    <img src={charity.imageUrl} alt={charity?.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-zinc-400 font-bold bg-zinc-100">NO IMAGE</div>
-                  )}
-                </div>
-                <CardContent className="flex flex-1 flex-col p-8 bg-white">
-                  <h3 className="mb-3 text-2xl font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">{charity?.name}</h3>
-                  <p className="mb-8 flex-1 line-clamp-3 text-sm text-zinc-500 leading-relaxed font-medium">{charity?.description}</p>
-                  <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-6">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Impact Generated</span>
-                      <span className="text-xl font-black text-emerald-600">£{(charity?.totalReceived ?? 0).toLocaleString()}</span>
-                    </div>
-                    <Link to={`/charities/${charity?._id}`} className="flex items-center gap-2 text-sm font-bold text-zinc-900 hover:text-emerald-600 transition-colors">
-                      Learn More
-                    </Link>
+          <>
+            <PaginationControls
+              className="mb-6"
+              currentPage={page}
+              totalPages={totalPages}
+              currentCount={charities.length}
+              totalItems={totalCharities}
+              itemLabel="partners"
+              onPageChange={setPage}
+              loading={loading || isFetching}
+            />
+
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {charities.map((charity) => (
+                <Card key={charity?._id ?? charity?.name} className="flex flex-col group overflow-hidden border-zinc-100 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 rounded-3xl">
+                  <div className="relative h-56 overflow-hidden bg-zinc-200">
+                    {charity?.isFeatured && (
+                      <div className="absolute left-4 top-4 z-10 rounded-xl bg-violet-600 px-4 py-1.5 text-[10px] font-black text-white shadow-lg shadow-violet-500/20">FEATURED</div>
+                    )}
+                    {charity?.imageUrl ? (
+                      <img src={charity.imageUrl} alt={charity?.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-zinc-400 font-bold bg-zinc-100">NO IMAGE</div>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <CardContent className="flex flex-1 flex-col p-8 bg-white">
+                    <h3 className="mb-3 text-2xl font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">{charity?.name}</h3>
+                    <p className="mb-8 flex-1 line-clamp-3 text-sm text-zinc-500 leading-relaxed font-medium">{charity?.description}</p>
+                    <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-6">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Impact Generated</span>
+                        <span className="text-xl font-black text-emerald-600">£{(charity?.totalReceived ?? 0).toLocaleString()}</span>
+                      </div>
+                      <Link to={`/charities/${charity?._id}`} className="flex items-center gap-2 text-sm font-bold text-zinc-900 hover:text-emerald-600 transition-colors">
+                        Learn More
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState 
             icon={Search}

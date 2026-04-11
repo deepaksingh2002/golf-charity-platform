@@ -5,6 +5,13 @@ import { selectUser } from '../../store/slices/authSlice';
 import { useGetMeQuery, useUpdateProfileMutation } from '../../store/api/authApiSlice';
 import { useGetCharitiesQuery } from '../../store/api/charityApiSlice';
 import { Spinner } from '../../components/ui/Spinner';
+import { getApiErrorMessage, normalizeApiList } from '../../store/api/apiUtils';
+
+const DEFAULT_CHARITY_PERCENTAGE = 10;
+
+function getSelectedCharityId(user) {
+  return user?.selectedCharity?._id || user?.selectedCharity || '';
+}
 
 export default function CharityPage() {
   const reduxUser = useSelector(selectUser);
@@ -20,37 +27,32 @@ export default function CharityPage() {
     data: charitiesResponse,
     isLoading: loadingCharities,
     error: charitiesError,
-  } = useGetCharitiesQuery({ limit: 100, page: 1 }, {
+  } = useGetCharitiesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const charities = useMemo(() => {
-    const data = charitiesResponse?.charities || charitiesResponse || [];
-    return Array.isArray(data) ? data : [];
-  }, [charitiesResponse]);
-  
+  const charities = useMemo(() => normalizeApiList(charitiesResponse, 'charities'), [charitiesResponse]);
+
   const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
   const loading = loadingCharities;
   const saving = isUpdating;
 
-  const [localPct, setLocalPct] = useState(null);
-  const [localSelectedId, setLocalSelectedId] = useState(null);
+  const [localPct, setLocalPct] = useState(() => reduxUser?.charityPercentage ?? null);
+  const [localSelectedId, setLocalSelectedId] = useState(() => getSelectedCharityId(reduxUser));
 
   useEffect(() => {
     if (userError) {
-      toast.error(userError?.data?.message || 'Failed to load your profile');
+      toast.error(getApiErrorMessage(userError, 'Failed to load your profile'));
     }
     if (charitiesError) {
-      toast.error(charitiesError?.data?.message || 'Failed to load charities');
+      toast.error(getApiErrorMessage(charitiesError, 'Failed to load charities'));
     }
   }, [userError, charitiesError]);
 
-  const pct = localPct !== null ? localPct : (user?.charityPercentage ?? 10);
-  const selectedId = localSelectedId !== null 
-    ? localSelectedId 
-    : (user?.selectedCharity?._id || user?.selectedCharity || '');
+  const pct = localPct ?? DEFAULT_CHARITY_PERCENTAGE;
+  const selectedId = localSelectedId || getSelectedCharityId(user);
 
   const selectedCharity = useMemo(
-    () => charities.find((charity) => charity?._id === selectedId) ?? null,
+    () => charities.find((charity) => (charity?._id || charity?.id) === selectedId) ?? null,
     [charities, selectedId],
   );
 
@@ -61,7 +63,7 @@ export default function CharityPage() {
       toast.success('Preferences saved successfully');
       refetchUser();
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to update preferences');
+      toast.error(getApiErrorMessage(err, 'Failed to update preferences'));
     }
   };
 
@@ -86,22 +88,22 @@ export default function CharityPage() {
 
         <div>
           <label className="mb-2 block text-xs text-zinc-500">Select a charity</label>
-          {(charities ?? []).length > 0 ? (
+          {charities.length > 0 ? (
             <select
               value={selectedId}
               onChange={(event) => setLocalSelectedId(event.target.value)}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
             >
               <option value="">Select a charity</option>
-              {(charities ?? []).map((charity) => (
-                <option key={charity?._id ?? charity?.name} value={charity?._id}>
+              {charities.map((charity) => (
+                <option key={charity?._id ?? charity?.id ?? charity?.name} value={charity?._id ?? charity?.id}>
                   {charity?.name ?? 'Unknown charity'}
                 </option>
               ))}
             </select>
           ) : (
             <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-300">
-              No active charities available yet.
+              No charities are available from the API yet. Ask an admin to add at least one charity.
             </p>
           )}
         </div>
@@ -120,8 +122,8 @@ export default function CharityPage() {
 
         <button
           onClick={handleSave}
-          disabled={saving || loading || !selectedId || (charities ?? []).length === 0}
-          className="min-h-[44px] rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700"
+          disabled={saving || loading || !selectedId || charities.length === 0}
+          className="min-h-11 rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700"
         >
           {saving ? 'Saving...' : 'Save Preference'}
         </button>

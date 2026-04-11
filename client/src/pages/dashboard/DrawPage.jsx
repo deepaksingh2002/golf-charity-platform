@@ -1,22 +1,32 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useGetActiveDrawsQuery, useGetDrawHistoryQuery } from '../../store/api/drawApiSlice';
+import { useGetCurrentDrawQuery, useGetDrawHistoryQuery } from '../../store/api/drawApiSlice';
 import { useGetScoresQuery } from '../../store/api/scoreApiSlice';
+import { getApiErrorMessage, normalizeApiList } from '../../store/api/apiUtils';
+import { PaginationControls } from '../../components/ui/PaginationControls';
 
 export default function DrawPage() {
-  const { data: publishedDrawsResponse, isLoading: loadingHistory, error: historyError } = useGetDrawHistoryQuery();
-  const { data: currentDraw, isLoading: loadingActive, error: activeError } = useGetActiveDrawsQuery();
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const { data: publishedDrawsResponse, isLoading: loadingHistory, error: historyError } = useGetDrawHistoryQuery({ page, limit: pageSize });
+  const { data: currentDraw, isLoading: loadingActive, error: activeError } = useGetCurrentDrawQuery();
   const { data: scoresResponse, isLoading: loadingScores, error: scoresError } = useGetScoresQuery();
 
   const loading = loadingHistory || loadingActive || loadingScores;
-  const publishedDraws = Array.isArray(publishedDrawsResponse) ? publishedDrawsResponse : publishedDrawsResponse?.draws || [];
-  const scores = Array.isArray(scoresResponse) ? scoresResponse : scoresResponse?.scores || [];
+  const publishedDraws = normalizeApiList(publishedDrawsResponse, 'draws');
+  const totalDraws = publishedDrawsResponse?.total ?? publishedDraws.length;
+  const totalPages = publishedDrawsResponse?.pages ?? 1;
+  const scores = normalizeApiList(scoresResponse, 'scores');
 
   useEffect(() => {
-    if (historyError) toast.error(historyError?.data?.message || 'Failed to load draw history');
-    if (activeError) toast.error(activeError?.data?.message || 'Failed to load active draw');
-    if (scoresError) toast.error(scoresError?.data?.message || 'Failed to load scores');
+    if (historyError) toast.error(getApiErrorMessage(historyError, 'Failed to load draw history'));
+    if (activeError) toast.error(getApiErrorMessage(activeError, 'Failed to load active draw'));
+    if (scoresError) toast.error(getApiErrorMessage(scoresError, 'Failed to load scores'));
   }, [historyError, activeError, scoresError]);
+
+  useEffect(() => {
+    setPage(1);
+  }, []);
 
   const userScoreValues = (scores ?? []).map((score) => score?.value).filter((value) => value != null);
 
@@ -32,6 +42,16 @@ export default function DrawPage() {
 
       {(publishedDraws ?? []).length > 0 ? (
         <div className="space-y-4">
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            currentCount={publishedDraws.length}
+            totalItems={totalDraws}
+            itemLabel="draws"
+            onPageChange={setPage}
+            loading={loading}
+            className="mb-2"
+          />
           {(publishedDraws ?? []).map((draw) => (
             <div key={draw?._id ?? draw?.month} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
               <h3 className="font-medium text-white">{draw?.month ?? 'Unknown month'}</h3>

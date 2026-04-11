@@ -3,9 +3,10 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useLoginMutation } from '../../store/api/authApiSlice';
+import { useLazyGetMeQuery, useLoginMutation } from '../../store/api/authApiSlice';
 import { getApiErrorMessage } from '../../store/api/apiUtils';
 import {
+  hasAdminAccess,
   setCredentials,
   selectIsAuthenticated,
   selectIsAdmin,
@@ -24,6 +25,15 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const [login, { isLoading }] = useLoginMutation();
+  const [fetchMe] = useLazyGetMeQuery();
+
+  const resolveRedirectPath = (isAdminUser) => {
+    if (isAdminUser) {
+      return '/admin';
+    }
+
+    return redirectPath || '/dashboard';
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -35,17 +45,28 @@ export default function LoginPage() {
     try {
       const res = await login(data).unwrap();
       const token = res.token;
-      const user = res.user || {
+      const loginUser = res.user || {
         _id: res._id,
         name: res.name,
         email: res.email,
         role: res.role,
         subscriptionStatus: res.subscriptionStatus,
       };
-      
-      dispatch(setCredentials({ user, token }));
+
+      dispatch(setCredentials({ user: loginUser, token }));
+
+      // Reconcile auth identity against backend profile before redirecting.
+      let resolvedUser = loginUser;
+      try {
+        resolvedUser = await fetchMe(undefined, true).unwrap();
+        dispatch(setCredentials({ user: resolvedUser, token }));
+      } catch {
+        // Fall back to login payload if profile fetch is temporarily unavailable.
+      }
+
+      const isAdminUser = hasAdminAccess(resolvedUser);
       toast.success('Welcome back!');
-      navigate(redirectPath || (user?.role === 'admin' ? '/admin' : '/dashboard'), { replace: true });
+      navigate(resolveRedirectPath(isAdminUser), { replace: true });
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Login failed'));
     }
@@ -68,14 +89,20 @@ export default function LoginPage() {
           <p className="text-zinc-500 mt-2 font-medium tracking-wide">Enter your credentials to access the platform</p>
         </div>
 
-        <div className="rounded-[32px] border border-zinc-800 bg-zinc-900/50 backdrop-blur-xl p-8 md:p-10 shadow-2xl shadow-black/50">
+        <div className="rounded-4xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-xl p-8 md:p-10 shadow-2xl shadow-black/50">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Input
               label="Email Address"
               type="email"
               placeholder="name@example.com"
               error={errors.email?.message}
-              {...register('email', { required: 'Email is required' })}
+              {...register('email', {
+                required: 'Email is required',
+                pattern: {
+                  value: /^\S+@\S+\.\S+$/,
+                  message: 'Please include a valid email',
+                },
+              })}
               className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 

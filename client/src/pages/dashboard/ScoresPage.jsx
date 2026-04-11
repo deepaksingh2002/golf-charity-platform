@@ -5,10 +5,11 @@ import {
   useAddScoreMutation, 
   useDeleteScoreMutation 
 } from '../../store/api/scoreApiSlice';
+import { getApiErrorMessage, normalizeApiList } from '../../store/api/apiUtils';
 
 export default function ScoresPage() {
   const { data: scoresResponse, isLoading, error } = useGetScoresQuery();
-  const scores = Array.isArray(scoresResponse) ? scoresResponse : scoresResponse?.scores || [];
+  const scores = normalizeApiList(scoresResponse, 'scores');
   const [addScore, { isLoading: isAdding }] = useAddScoreMutation();
   const [deleteScore] = useDeleteScoreMutation();
 
@@ -28,7 +29,7 @@ export default function ScoresPage() {
       setValue(25);
       setDate('');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to add score');
+      toast.error(getApiErrorMessage(err, 'Failed to add score'));
     }
   };
 
@@ -39,7 +40,7 @@ export default function ScoresPage() {
       await deleteScore(scoreId).unwrap();
       toast.success('Score deleted!');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to delete score');
+      toast.error(getApiErrorMessage(err, 'Failed to delete score'));
     }
   };
 
@@ -77,7 +78,7 @@ export default function ScoresPage() {
             <button
               type="submit"
               disabled={isAdding || isLoading}
-              className="min-h-[44px] rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700"
+              className="min-h-11 rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-500 disabled:bg-zinc-700"
             >
               {isAdding ? 'Adding...' : 'Add Score'}
             </button>
@@ -86,7 +87,7 @@ export default function ScoresPage() {
       </form>
 
       {isLoading ? <p className="text-sm text-zinc-500">Loading scores...</p> : null}
-      {error ? <p className="text-sm text-red-500">Error loading scores: {error?.data?.message || 'Unknown error'}</p> : null}
+      {error ? <p className="text-sm text-red-500">Error loading scores: {getApiErrorMessage(error, 'Unknown error')}</p> : null}
 
       <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
         {(scores ?? []).length > 0 ? (

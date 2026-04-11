@@ -86,7 +86,13 @@ export default function RegisterPage() {
               type="email"
               placeholder="name@example.com"
               error={errors.email?.message}
-              {...register('email', { required: 'Email is required' })}
+              {...register('email', {
+                required: 'Email is required',
+                pattern: {
+                  value: /^\S+@\S+\.\S+$/,
+                  message: 'Please include a valid email',
+                },
+              })}
               className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 
@@ -97,7 +103,7 @@ export default function RegisterPage() {
               error={errors.password?.message}
               {...register('password', { 
                 required: 'Password is required',
-                minLength: { value: 8, message: 'Password must be at least 8 characters' }
+                minLength: { value: 6, message: 'Please enter a password with 6 or more characters' }
               })}
               className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
