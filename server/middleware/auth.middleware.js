@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
 
+const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+
 export const protect = async (req, res, next) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -11,6 +13,8 @@ export const protect = async (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({ message: 'User not found' });
       }
+
+      req.user.role = normalizeRole(req.user.role || decoded.role);
       next();
     } catch (error) {
       return res.status(401).json({ message: 'Not authorized, token failed' });
@@ -23,7 +27,7 @@ export const protect = async (req, res, next) => {
 };
 
 export const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && normalizeRole(req.user.role) === 'admin') {
     next();
   } else {
     res.status(403).json({ message: 'Not authorized as an admin' });
@@ -31,7 +35,7 @@ export const adminOnly = (req, res, next) => {
 };
 
 export const subscriberOnly = (req, res, next) => {
-  if (req.user && (req.user.subscriptionStatus === 'active' || req.user.role === 'admin')) {
+  if (req.user && (req.user.subscriptionStatus === 'active' || normalizeRole(req.user.role) === 'admin')) {
     next();
   } else {
     res.status(403).json({ message: 'Active subscription required' });
