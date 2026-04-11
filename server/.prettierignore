@@ -1,0 +1,10 @@
+node_modules/
+uploads/
+coverage/
+dist/
+build/
+.vercel/
+*.log
+package-lock.json
+.env
+.env.*
