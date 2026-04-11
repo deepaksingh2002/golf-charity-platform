@@ -5,6 +5,8 @@ import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { motion as Motion } from 'framer-motion';
+import { getApiErrorMessage } from '../../store/api/apiUtils';
+import { useGetHealthQuery } from '../../store/api/systemApiSlice';
 import { 
   AreaChart, 
   Area, 
@@ -15,18 +17,30 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
-const MOCK_REVENUE_DATA = [
-  { name: 'Jan', revenue: 4000 },
-  { name: 'Feb', revenue: 3000 },
-  { name: 'Mar', revenue: 5000 },
-  { name: 'Apr', revenue: 4500 },
-  { name: 'May', revenue: 6000 },
-  { name: 'Jun', revenue: 5500 },
-  { name: 'Jul', revenue: 7500 },
-];
+const buildRevenueSeries = (stats) => {
+  const candidates = [
+    stats?.revenueTrend,
+    stats?.monthlyRevenue,
+    stats?.revenueByMonth,
+    stats?.analytics?.revenueTrend,
+  ];
+
+  const source = candidates.find((entry) => Array.isArray(entry)) || [];
+  return source
+    .map((item, index) => ({
+      name: item?.month || item?.label || item?.name || `M${index + 1}`,
+      revenue: Number(item?.revenue ?? item?.value ?? item?.total ?? 0),
+    }))
+    .filter((item) => Number.isFinite(item.revenue));
+};
 
 export default function AdminDashboardPage() {
   const { data: stats, isLoading, error } = useGetAdminDashboardStatsQuery();
+  const { data: healthData, isFetching: checkingHealth, error: healthError } = useGetHealthQuery();
+
+  const revenueSeries = buildRevenueSeries(stats);
+  const hasRevenueSeries = revenueSeries.length > 0;
+  const apiHealthy = !healthError && !!healthData;
 
   if (isLoading) {
     return (
@@ -40,7 +54,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
         <h3 className="font-bold">Error loading dashboard stats</h3>
-        <p className="text-sm">{error?.data?.message || 'Please check your connection and permissions.'}</p>
+        <p className="text-sm">{getApiErrorMessage(error, 'Please check your connection and permissions.')}</p>
       </div>
     );
   }
@@ -96,7 +110,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-6 flex flex-col min-h-[400px]">
+        <Card className="lg:col-span-2 p-6 flex flex-col min-h-100">
           <div className="flex items-center justify-between mb-8">
              <div>
                 <h3 className="font-bold text-zinc-900 text-lg">Subscription Revenue</h3>
@@ -105,43 +119,49 @@ export default function AdminDashboardPage() {
              <Badge variant="active" className="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold">+28% growth</Badge>
           </div>
           
-          <div className="flex-1 w-full min-h-[250px]">
-             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={MOCK_REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
-                  />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                    cursor={{ stroke: '#10b981', strokeWidth: 2 }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#10b981" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorRev)" 
-                    animationDuration={2000}
-                  />
-                </AreaChart>
-             </ResponsiveContainer>
+          <div className="flex-1 w-full min-h-62.5">
+            {hasRevenueSeries ? (
+              <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
+                      dy={10}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                      cursor={{ stroke: '#10b981', strokeWidth: 2 }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="#10b981" 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#colorRev)" 
+                      animationDuration={2000}
+                    />
+                  </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 text-sm text-zinc-500">
+                No revenue trend data available yet.
+              </div>
+            )}
           </div>
         </Card>
 
@@ -156,7 +176,13 @@ export default function AdminDashboardPage() {
            
            <div className="p-6 space-y-6 flex-1">
              {[
-               { name: 'Core API Server', status: 'Operational', icon: <Activity />, sub: 'Ping: 14ms' },
+               {
+                 name: 'Core API Server',
+                 status: checkingHealth ? 'Checking' : (apiHealthy ? 'Operational' : 'Unavailable'),
+                 icon: <Activity />,
+                 sub: checkingHealth ? 'Health check in progress' : (apiHealthy ? 'Health endpoint reachable' : 'Health endpoint failing'),
+                 error: !checkingHealth && !apiHealthy,
+               },
                { name: 'Stripe Gateway', status: 'Operational', icon: <CreditCard />, sub: 'Uptime: 99.9%' },
                { name: 'Mailing Service', status: 'Degraded', icon: <AlertCircle />, sub: 'Latency: High', error: true },
              ].map((item) => (

@@ -15,6 +15,7 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
+import { getApiErrorMessage } from '../../store/api/apiUtils';
 
 export default function AdminUserDetailPage() {
   const { id } = useParams();
@@ -35,7 +36,7 @@ export default function AdminUserDetailPage() {
       }).unwrap();
       toast.success('Subscription updated successfully');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to update subscription');
+      toast.error(getApiErrorMessage(err, 'Failed to update subscription'));
     }
   };
 
@@ -49,7 +50,7 @@ export default function AdminUserDetailPage() {
       toast.success('Score updated!');
       setEditingScoreId(null);
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to update score');
+      toast.error(getApiErrorMessage(err, 'Failed to update score'));
     }
   };
 

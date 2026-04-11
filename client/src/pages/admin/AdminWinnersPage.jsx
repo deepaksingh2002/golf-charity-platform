@@ -6,10 +6,11 @@ import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { getApiErrorMessage, normalizeApiList } from '../../store/api/apiUtils';
 
 export default function AdminWinnersPage() {
   const { data: winnersResponse, isLoading, error } = useGetWinnersListQuery();
-  const winners = Array.isArray(winnersResponse) ? winnersResponse : winnersResponse?.winners || [];
+  const winners = normalizeApiList(winnersResponse, 'winners');
   const [verifyWinner, { isLoading: isVerifying }] = useVerifyWinnerMutation();
 
   const handleVerify = async (drawId, winnerId) => {
@@ -19,7 +20,7 @@ export default function AdminWinnersPage() {
       await verifyWinner({ drawId, winnerId }).unwrap();
       toast.success('Winner verified successfully');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to verify winner');
+      toast.error(getApiErrorMessage(err, 'Failed to verify winner'));
     }
   };
 
@@ -37,7 +38,7 @@ export default function AdminWinnersPage() {
         <AlertCircle size={20} />
         <div>
           <h3 className="font-bold">Error loading winners</h3>
-          <p className="text-sm">{error?.data?.message || 'Please check your connection and permissions.'}</p>
+          <p className="text-sm">{getApiErrorMessage(error, 'Please check your connection and permissions.')}</p>
         </div>
       </div>
     );

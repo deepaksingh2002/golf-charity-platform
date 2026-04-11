@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useGetAllUsersQuery } from '../../store/api/adminApiSlice';
-import { Search, ChevronLeft, ChevronRight, User, Mail, Shield, CreditCard, ExternalLink, Users } from 'lucide-react';
+import { Search, User, Mail, Shield, CreditCard, ExternalLink, Users } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { getApiErrorMessage } from '../../store/api/apiUtils';
+import { PaginationControls } from '../../components/ui/PaginationControls';
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
@@ -22,7 +24,7 @@ export default function AdminUsersPage() {
       <EmptyState 
         icon={Users}
         title="Failed to load users"
-        description={error?.data?.message || "Please check your connection and try again."}
+        description={getApiErrorMessage(error, 'Please check your connection and try again.')}
         actionLabel="Retry Connection"
         onAction={() => window.location.reload()}
       />
@@ -121,32 +123,16 @@ export default function AdminUsersPage() {
           )}
         </div>
 
-        {/* Pagination */}
-        <div className="px-6 py-4 border-t border-zinc-100 bg-zinc-50/30 flex items-center justify-between">
-          <p className="text-xs text-zinc-500 font-medium">
-            Showing <span className="text-zinc-900">{users.length}</span> of <span className="text-zinc-900">{total}</span> users
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1 || isLoading}
-            >
-              <ChevronLeft size={16} />
-            </Button>
-            <span className="text-xs font-bold px-3 py-1 bg-white border border-zinc-200 rounded-lg">
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= totalPages || isLoading}
-            >
-              <ChevronRight size={16} />
-            </Button>
-          </div>
+        <div className="px-6 py-4 border-t border-zinc-100 bg-zinc-50/30">
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            currentCount={users.length}
+            totalItems={total}
+            itemLabel="users"
+            onPageChange={setPage}
+            loading={isLoading}
+          />
         </div>
       </Card>
     </div>

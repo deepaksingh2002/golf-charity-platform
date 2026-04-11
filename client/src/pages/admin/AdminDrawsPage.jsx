@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Trophy, Send, Play, Plus, Clock, Users, Hash, Calendar, AlertCircle, CheckCircle2, FileUp, History } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -6,8 +6,10 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { getApiErrorMessage, normalizeApiList } from '../../store/api/apiUtils';
+import { PaginationControls } from '../../components/ui/PaginationControls';
 import { 
-  useGetActiveDrawsQuery, 
+  useGetCurrentDrawQuery, 
   useGetDrawHistoryQuery,
   useCreateDrawMutation,
   useSimulateDrawMutation,
@@ -16,9 +18,13 @@ import {
 } from '../../store/api/drawApiSlice';
 
 export default function AdminDrawsPage() {
-  const { data: publishedDrawsResponse, isLoading: loadingHistory, error: historyError } = useGetDrawHistoryQuery();
-  const { data: activeDraft, isLoading: loadingActive, error: activeError } = useGetActiveDrawsQuery();
-  const publishedDraws = Array.isArray(publishedDrawsResponse) ? publishedDrawsResponse : publishedDrawsResponse?.draws || [];
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const { data: publishedDrawsResponse, isLoading: loadingHistory, error: historyError } = useGetDrawHistoryQuery({ page, limit: pageSize });
+  const { data: activeDraft, isLoading: loadingActive, error: activeError } = useGetCurrentDrawQuery();
+  const publishedDraws = normalizeApiList(publishedDrawsResponse, 'draws');
+  const totalDraws = publishedDrawsResponse?.total ?? publishedDraws.length;
+  const totalPages = publishedDrawsResponse?.pages ?? 1;
 
   const [createDraw, { isLoading: isCreating }] = useCreateDrawMutation();
   const [simulateDraw, { isLoading: isSimulating }] = useSimulateDrawMutation();
@@ -26,9 +32,13 @@ export default function AdminDrawsPage() {
   const [uploadProof, { isLoading: isUploading }] = useUploadProofMutation();
 
   useEffect(() => {
-    if (historyError) toast.error(historyError?.data?.message || 'Failed to load publish history');
-    if (activeError) toast.error(activeError?.data?.message || 'Failed to load active draft');
+    if (historyError) toast.error(getApiErrorMessage(historyError, 'Failed to load publish history'));
+    if (activeError) toast.error(getApiErrorMessage(activeError, 'Failed to load active draft'));
   }, [historyError, activeError]);
+
+  useEffect(() => {
+    setPage(1);
+  }, []);
 
   const handleUploadProof = async (id, file) => {
     if (!file) return;
@@ -39,7 +49,7 @@ export default function AdminDrawsPage() {
       await uploadProof({ id, body: formData }).unwrap();
       toast.success('Audit proof uploaded successfully');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to upload proof');
+      toast.error(getApiErrorMessage(err, 'Failed to upload proof'));
     }
   };
 
@@ -48,7 +58,7 @@ export default function AdminDrawsPage() {
       await createDraw({ drawType: 'random' }).unwrap();
       toast.success('New draw draft created successfully!');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to create draw');
+      toast.error(getApiErrorMessage(err, 'Failed to create draw'));
     }
   };
 
@@ -58,7 +68,7 @@ export default function AdminDrawsPage() {
       await simulateDraw(activeDraft._id).unwrap();
       toast.success('Draw simulated successfully!');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to simulate draw');
+      toast.error(getApiErrorMessage(err, 'Failed to simulate draw'));
     }
   };
 
@@ -71,7 +81,7 @@ export default function AdminDrawsPage() {
       await publishDraw(activeDraft._id).unwrap();
       toast.success('Draw published successfully!');
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to publish draw');
+      toast.error(getApiErrorMessage(err, 'Failed to publish draw'));
     }
   };
 
@@ -164,7 +174,7 @@ export default function AdminDrawsPage() {
                      <p className="text-3xl font-black text-zinc-900 tracking-tight">{activeDraft.participantCount ?? '0'}</p>
                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">Eligible Members</p>
                    </div>
-                   <p className="text-[10px] text-zinc-400 max-w-[180px] font-medium leading-relaxed italic">System generated from active subscriptions.</p>
+                   <p className="text-[10px] text-zinc-400 max-w-45 font-medium leading-relaxed italic">System generated from active subscriptions.</p>
                 </div>
 
                 <div className="flex flex-col justify-center gap-3">
@@ -214,57 +224,69 @@ export default function AdminDrawsPage() {
           {loadingHistory ? (
             <div className="flex py-12 justify-center"><Spinner /></div>
           ) : publishedDraws.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {publishedDraws.map(draw => (
-                <Card key={draw._id} className="p-6 group hover:border-violet-200 transition-all duration-300 hover:shadow-xl hover:shadow-zinc-500/5">
-                  <div className="flex items-center justify-between mb-6">
-                    <Badge variant="paid" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black tracking-widest text-[10px]">PUBLISHED</Badge>
-                    <span className="text-[10px] text-zinc-400 font-bold flex items-center gap-1.5 uppercase tracking-wider">
-                      <Calendar size={12} />
-                      {new Date(draw.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <h4 className="font-black text-zinc-900 text-xl uppercase tracking-tight">{draw.month}</h4>
-                  <div className="mt-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2"><Users size={14}/> Participants</span>
-                      <span className="font-black text-zinc-900">{draw.participantCount}</span>
+            <>
+              <PaginationControls
+                currentPage={page}
+                totalPages={totalPages}
+                currentCount={publishedDraws.length}
+                totalItems={totalDraws}
+                itemLabel="draws"
+                onPageChange={setPage}
+                loading={loadingHistory}
+                className="mb-4"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {publishedDraws.map(draw => (
+                  <Card key={draw._id} className="p-6 group hover:border-violet-200 transition-all duration-300 hover:shadow-xl hover:shadow-zinc-500/5">
+                    <div className="flex items-center justify-between mb-6">
+                      <Badge variant="paid" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black tracking-widest text-[10px]">PUBLISHED</Badge>
+                      <span className="text-[10px] text-zinc-400 font-bold flex items-center gap-1.5 uppercase tracking-wider">
+                        <Calendar size={12} />
+                        {new Date(draw.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
-                    <div>
-                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-3 mt-4">Audit Results</span>
-                       <div className="flex gap-2 flex-wrap">
-                          {(draw.drawnNumbers ?? []).map(n => (
-                            <div key={n} className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-900 flex items-center justify-center font-bold text-xs ring-1 ring-zinc-200">
-                              {n}
-                            </div>
-                          ))}
-                       </div>
+                    <h4 className="font-black text-zinc-900 text-xl uppercase tracking-tight">{draw.month}</h4>
+                    <div className="mt-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2"><Users size={14}/> Participants</span>
+                        <span className="font-black text-zinc-900">{draw.participantCount}</span>
+                      </div>
+                      <div>
+                         <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-3 mt-4">Audit Results</span>
+                         <div className="flex gap-2 flex-wrap">
+                            {(draw.drawnNumbers ?? []).map(n => (
+                              <div key={n} className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-900 flex items-center justify-center font-bold text-xs ring-1 ring-zinc-200">
+                                {n}
+                              </div>
+                            ))}
+                         </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 pt-6 mt-6 border-t border-zinc-100/50">
+                        <label className="flex-1 cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => handleUploadProof(draw._id, e.target.files[0])}
+                            disabled={isUploading}
+                          />
+                          <div className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-100 text-[10px] font-bold text-zinc-600 hover:bg-zinc-100 transition-colors uppercase tracking-widest">
+                            {isUploading ? <Spinner size="xs" /> : <FileUp size={14} />}
+                            Upload Proof
+                          </div>
+                        </label>
+                        {draw.winnersCount > 0 && (
+                          <div className="flex items-center gap-2 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                             <CheckCircle2 size={12} />
+                             {draw.winnersCount} NOTIFIED
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2 pt-6 mt-6 border-t border-zinc-100/50">
-                      <label className="flex-1 cursor-pointer">
-                        <input
-                          type="file"
-                          className="hidden"
-                          onChange={(e) => handleUploadProof(draw._id, e.target.files[0])}
-                          disabled={isUploading}
-                        />
-                        <div className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-100 text-[10px] font-bold text-zinc-600 hover:bg-zinc-100 transition-colors uppercase tracking-widest">
-                          {isUploading ? <Spinner size="xs" /> : <FileUp size={14} />}
-                          Upload Proof
-                        </div>
-                      </label>
-                      {draw.winnersCount > 0 && (
-                        <div className="flex items-center gap-2 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
-                           <CheckCircle2 size={12} />
-                           {draw.winnersCount} NOTIFIED
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+            </>
           ) : (
             <EmptyState 
               icon={Hash}

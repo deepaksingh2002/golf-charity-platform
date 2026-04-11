@@ -5,7 +5,8 @@ import {
   useCreateCharityMutation, 
   useUpdateCharityMutation, 
   useDeleteCharityMutation, 
-  useToggleFeaturedMutation 
+  useToggleFeaturedMutation,
+  useAddCharityEventMutation,
 } from '../../store/api/charityApiSlice';
 import { Heart, Globe, Plus, Edit2, Trash2, Star, AlertCircle, Save, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -13,17 +14,23 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
+import { PaginationControls } from '../../components/ui/PaginationControls';
+import { getApiErrorMessage, normalizeApiList } from '../../store/api/apiUtils';
 
 export default function AdminCharitiesPage() {
-  const { data: charitiesResponse, isLoading, error } = useGetCharitiesQuery();
-  const charities = Array.isArray(charitiesResponse) ? charitiesResponse : charitiesResponse?.charities || [];
+  const { data: charitiesResponse, isLoading, error } = useGetCharitiesQuery({ page: 1, limit: 100 });
+  const charities = normalizeApiList(charitiesResponse, 'charities');
   const [createCharity, { isLoading: isCreating }] = useCreateCharityMutation();
   const [updateCharity, { isLoading: isUpdating }] = useUpdateCharityMutation();
   const [deleteCharity] = useDeleteCharityMutation();
   const [toggleFeatured] = useToggleFeaturedMutation();
+  const [addCharityEvent, { isLoading: isAddingEvent }] = useAddCharityEventMutation();
 
   const [formData, setFormData] = useState({ name: '', description: '', website: '' });
   const [editingId, setEditingId] = useState('');
+  const [eventTargetId, setEventTargetId] = useState('');
+  const [eventData, setEventData] = useState({ title: '', date: '', description: '' });
+  const totalCharities = charitiesResponse?.total ?? charities.length;
 
   const resetForm = () => {
     setFormData({ name: '', description: '', website: '' });
@@ -44,7 +51,7 @@ export default function AdminCharitiesPage() {
       }
       resetForm();
     } catch (err) {
-      toast.error(err?.data?.message || 'Action failed');
+      toast.error(getApiErrorMessage(err, 'Action failed'));
     }
   };
 
@@ -54,7 +61,7 @@ export default function AdminCharitiesPage() {
       await deleteCharity(id).unwrap();
       toast.success('Charity deleted');
     } catch (err) {
-      toast.error(err?.data?.message || 'Delete failed');
+      toast.error(getApiErrorMessage(err, 'Delete failed'));
     }
   };
 
@@ -62,7 +69,39 @@ export default function AdminCharitiesPage() {
     try {
       await toggleFeatured(id).unwrap();
     } catch (err) {
-      toast.error(err?.data?.message || 'Update failed');
+      toast.error(getApiErrorMessage(err, 'Update failed'));
+    }
+  };
+
+  const resetEventForm = () => {
+    setEventData({ title: '', date: '', description: '' });
+    setEventTargetId('');
+  };
+
+  const handleAddEvent = async (event) => {
+    event.preventDefault();
+    if (!eventTargetId) {
+      toast.error('Select a charity first');
+      return;
+    }
+    if (!eventData.title || !eventData.date) {
+      toast.error('Event title and date are required');
+      return;
+    }
+
+    try {
+      await addCharityEvent({
+        id: eventTargetId,
+        event: {
+          title: eventData.title,
+          date: eventData.date,
+          description: eventData.description,
+        },
+      }).unwrap();
+      toast.success('Charity event added');
+      resetEventForm();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to add event'));
     }
   };
 
@@ -72,7 +111,7 @@ export default function AdminCharitiesPage() {
         <AlertCircle size={20} />
         <div>
           <h3 className="font-bold">Error loading charities</h3>
-          <p className="text-sm">{error?.data?.message || 'Please check your connection and permissions.'}</p>
+          <p className="text-sm">{getApiErrorMessage(error, 'Please check your connection and permissions.')}</p>
         </div>
       </div>
     );
@@ -88,6 +127,15 @@ export default function AdminCharitiesPage() {
           </h1>
           <p className="text-zinc-500 mt-1">Manage partner organizations and donation recipients.</p>
         </div>
+        <PaginationControls
+          currentPage={1}
+          totalPages={1}
+          currentCount={charities.length}
+          totalItems={totalCharities}
+          itemLabel="charities"
+          showControls={false}
+          className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-600 shadow-sm"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -120,7 +168,7 @@ export default function AdminCharitiesPage() {
                 <label className="text-sm font-medium text-zinc-700">Description</label>
                 <textarea
                   placeholder="Tell us about this charity..."
-                  className="w-full min-h-[120px] rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
+                  className="w-full min-h-30 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
@@ -137,6 +185,47 @@ export default function AdminCharitiesPage() {
                 )}
               </div>
             </form>
+
+            <div className="mt-8 border-t border-zinc-100 pt-6">
+              <h3 className="text-base font-bold text-zinc-900">Add Charity Event</h3>
+              <form onSubmit={handleAddEvent} className="mt-4 space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-zinc-700">Charity</label>
+                  <select
+                    value={eventTargetId}
+                    onChange={(e) => setEventTargetId(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="">Select charity</option>
+                    {charities.map((charity) => (
+                      <option key={charity._id} value={charity._id}>
+                        {charity.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Input
+                  placeholder="Event title"
+                  value={eventData.title}
+                  onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
+                />
+                <Input
+                  type="date"
+                  value={eventData.date}
+                  onChange={(e) => setEventData({ ...eventData, date: e.target.value })}
+                />
+                <textarea
+                  placeholder="Optional event description"
+                  className="w-full min-h-24 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none transition-all resize-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  value={eventData.description}
+                  onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
+                />
+                <Button type="submit" loading={isAddingEvent} className="w-full">
+                  <Plus size={16} className="mr-2" />
+                  Add Event
+                </Button>
+              </form>
+            </div>
           </Card>
         </div>
 
