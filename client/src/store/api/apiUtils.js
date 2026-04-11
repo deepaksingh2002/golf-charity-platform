@@ -5,10 +5,53 @@ export const unwrapApiResponse = (payload) => {
     'success' in payload &&
     'data' in payload
   ) {
-    return payload.data;
+    const { data, ...rest } = payload;
+
+    if (Array.isArray(data)) {
+      const hasSiblingArray = Object.values(rest).some(Array.isArray);
+      return hasSiblingArray ? payload : data;
+    }
+
+    if (data && typeof data === 'object') {
+      return { ...rest, ...data };
+    }
+
+    return data;
   }
 
   return payload;
+};
+
+export const normalizeApiList = (payload, listKey) => {
+  if (Array.isArray(payload)) return payload;
+
+  if (!payload || typeof payload !== 'object') return [];
+
+  const direct = payload?.[listKey];
+  if (Array.isArray(direct)) return direct;
+
+  const nestedByKey =
+    payload?.data?.[listKey] ??
+    payload?.result?.[listKey] ??
+    payload?.results?.[listKey] ??
+    payload?.payload?.[listKey];
+  if (Array.isArray(nestedByKey)) return nestedByKey;
+
+  const genericCandidates = [
+    payload?.data,
+    payload?.items,
+    payload?.results,
+    payload?.rows,
+    payload?.docs,
+    payload?.payload,
+  ];
+
+  for (const candidate of genericCandidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  const value = payload?.[listKey] ?? payload ?? [];
+  return Array.isArray(value) ? value : [];
 };
 
 export const getApiErrorMessage = (error, fallback = 'Something went wrong') => {
@@ -33,6 +76,13 @@ export const getApiErrorMessage = (error, fallback = 'Something went wrong') => 
       if (typeof data === 'object') {
         if (typeof data.message === 'string' && data.message) {
           return data.message;
+        }
+
+        if (Array.isArray(data.errors) && data.errors.length > 0) {
+          const firstValidationError = data.errors[0];
+          if (typeof firstValidationError === 'string') return firstValidationError;
+          if (firstValidationError?.msg) return firstValidationError.msg;
+          if (firstValidationError?.message) return firstValidationError.message;
         }
 
         if (Array.isArray(data.error) && data.error.length > 0) {

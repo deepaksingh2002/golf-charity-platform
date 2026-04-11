@@ -1,4 +1,5 @@
 import { apiSlice } from './apiSlice';
+import { normalizeApiList } from './apiUtils';
 
 export const charityApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -18,7 +19,7 @@ export const charityApiSlice = apiSlice.injectEndpoints({
         };
       },
       providesTags: (result) => {
-        const charitiesList = Array.isArray(result) ? result : result?.charities || [];
+        const charitiesList = normalizeApiList(result, 'charities');
         return [
           ...charitiesList.map(({ _id }) => ({ type: 'Charity', id: _id })),
           { type: 'Charity', id: 'LIST' }
@@ -59,6 +60,14 @@ export const charityApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: (result, error, id) => [{ type: 'Charity', id }, { type: 'Charity', id: 'LIST' }],
     }),
+    addCharityEvent: builder.mutation({
+      query: ({ id, event }) => ({
+        url: `/charities/${id}/events`,
+        method: 'POST',
+        body: event,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Charity', id }, { type: 'Charity', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -68,5 +77,6 @@ export const {
   useCreateCharityMutation,
   useUpdateCharityMutation,
   useDeleteCharityMutation,
-  useToggleFeaturedMutation
+  useToggleFeaturedMutation,
+  useAddCharityEventMutation,
 } = charityApiSlice;

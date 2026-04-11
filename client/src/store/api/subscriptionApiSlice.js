@@ -2,12 +2,13 @@ import { apiSlice } from './apiSlice';
 
 export const subscriptionApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    createCheckoutSession: builder.mutation({
-      query: (plan) => ({
+    subscribe: builder.mutation({
+      query: (payload) => ({
         url: '/subscriptions/subscribe',
         method: 'POST',
-        body: { plan },
+        body: typeof payload === 'string' ? { plan: payload } : payload,
       }),
+      invalidatesTags: ['Subscription', 'User'],
     }),
     getSubscriptionStatus: builder.query({
       query: () => '/subscriptions/status',
@@ -23,4 +24,11 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useCreateCheckoutSessionMutation, useGetSubscriptionStatusQuery, useCancelSubscriptionMutation } = subscriptionApiSlice;
+export const {
+  useSubscribeMutation,
+  useGetSubscriptionStatusQuery,
+  useCancelSubscriptionMutation,
+} = subscriptionApiSlice;
+
+// Backward-compatible alias while migrating call sites.
+export const useCreateCheckoutSessionMutation = useSubscribeMutation;

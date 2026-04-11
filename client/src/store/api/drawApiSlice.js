@@ -1,8 +1,9 @@
 import { apiSlice } from './apiSlice';
+import { normalizeApiList } from './apiUtils';
 
 export const drawApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    getActiveDraws: builder.query({
+    getCurrentDraw: builder.query({
       query: () => '/draws/current',
       providesTags: (result) =>
         result
@@ -10,11 +11,14 @@ export const drawApiSlice = apiSlice.injectEndpoints({
           : [{ type: 'Draw', id: 'CURRENT' }],
     }),
     getDrawHistory: builder.query({
-      query: () => '/draws',
-      providesTags: (result) =>
-        Array.isArray(result)
-          ? [...result.map(({ _id }) => ({ type: 'Draw', id: _id })), { type: 'Draw', id: 'HISTORY' }]
-          : [{ type: 'Draw', id: 'HISTORY' }],
+      query: (params) => ({
+        url: '/draws',
+        params,
+      }),
+      providesTags: (result) => {
+        const draws = normalizeApiList(result, 'draws');
+        return [...draws.map(({ _id }) => ({ type: 'Draw', id: _id })), { type: 'Draw', id: 'HISTORY' }];
+      },
     }),
     createDraw: builder.mutation({
       query: (body) => ({
@@ -53,11 +57,14 @@ export const drawApiSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { 
-  useGetActiveDrawsQuery, 
+export const {
+  useGetCurrentDrawQuery,
   useGetDrawHistoryQuery, 
   useCreateDrawMutation, 
   useSimulateDrawMutation, 
   usePublishDrawMutation,
   useUploadProofMutation
 } = drawApiSlice;
+
+// Backward-compatible alias while migrating call sites to current-draw terminology.
+export const useGetActiveDrawsQuery = useGetCurrentDrawQuery;

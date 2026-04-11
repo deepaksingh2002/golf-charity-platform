@@ -42,6 +42,7 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useGetMeQuery,
+  useLazyGetMeQuery,
   useUpdateProfileMutation,
   useChangePasswordMutation,
 } = authApiSlice;

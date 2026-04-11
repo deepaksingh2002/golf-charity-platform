@@ -2,8 +2,11 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { selectToken } from '../slices/authSlice';
 import { unwrapApiResponse } from './apiUtils';
 
+const apiTimeout = Number(import.meta.env.VITE_API_TIMEOUT) || 30000;
+
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_URL || 'https://golf-charity-6fnp.onrender.com/api',
+  timeout: apiTimeout,
   credentials: 'include',
   prepareHeaders: (headers, { getState }) => {
     const token = selectToken(getState());
@@ -30,6 +33,6 @@ const baseQuery = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery,
-  tagTypes: ['User', 'Score', 'Charity', 'Draw', 'Admin', 'Subscription'],
+  tagTypes: ['User', 'Score', 'Charity', 'Draw', 'Admin', 'Subscription', 'System'],
   endpoints: () => ({}),
 });

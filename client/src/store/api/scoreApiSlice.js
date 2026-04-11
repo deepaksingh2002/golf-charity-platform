@@ -1,11 +1,12 @@
 import { apiSlice } from './apiSlice';
+import { normalizeApiList } from './apiUtils';
 
 export const scoreApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getScores: builder.query({
       query: () => '/scores',
       providesTags: (result) => {
-        const scoresList = Array.isArray(result) ? result : result?.scores || [];
+        const scoresList = normalizeApiList(result, 'scores');
         return [
           ...scoresList.map(({ _id }) => ({ type: 'Score', id: _id })),
           { type: 'Score', id: 'LIST' },
@@ -26,7 +27,7 @@ export const scoreApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
         body,
       }),
-      invalidatesTags: (result, error, { scoreId }) => [{ type: 'Score', id: scoreId }],
+      invalidatesTags: (result, error, { scoreId }) => [{ type: 'Score', id: scoreId }, { type: 'Score', id: 'LIST' }],
     }),
     deleteScore: builder.mutation({
       query: (scoreId) => ({

@@ -1,4 +1,5 @@
 import { apiSlice } from './apiSlice';
+import { normalizeApiList } from './apiUtils';
 
 export const adminApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -11,10 +12,10 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         url: '/admin/users',
         params,
       }),
-      providesTags: (result) =>
-        result && result.users
-          ? [...result.users.map(({ _id }) => ({ type: 'User', id: _id })), { type: 'User', id: 'LIST' }]
-          : [{ type: 'User', id: 'LIST' }],
+      providesTags: (result) => {
+        const users = normalizeApiList(result, 'users');
+        return [...users.map(({ _id }) => ({ type: 'User', id: _id })), { type: 'User', id: 'LIST' }];
+      },
     }),
     getUserDetail: builder.query({
       query: (id) => `/admin/users/${id}`,
