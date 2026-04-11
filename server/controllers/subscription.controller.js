@@ -8,6 +8,8 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const isPlaceholderValue = (value) => !value || String(value).toLowerCase().includes('placeholder');
+
 const resolvePriceId = (plan, explicitPriceId) => {
   if (explicitPriceId) return explicitPriceId;
   if (plan === 'yearly') return process.env.STRIPE_YEARLY_PRICE_ID;
@@ -22,29 +24,43 @@ const buildSubscriptionStatusPayload = (user, subscription = null) => ({
     ? {
         current_period_end: subscription.current_period_end,
         cancel_at_period_end: subscription.cancel_at_period_end,
-        status: subscription.status
+        status: subscription.status,
       }
     : {
-        current_period_end: user.subscriptionRenewDate ? Math.floor(user.subscriptionRenewDate.getTime() / 1000) : null,
+        current_period_end: user.subscriptionRenewDate
+          ? Math.floor(user.subscriptionRenewDate.getTime() / 1000)
+          : null,
         cancel_at_period_end: false,
-        status: 'active'
-      }
+        status: 'active',
+      },
 });
 
 const getRenewDateFromUnix = (timestamp) => (timestamp ? new Date(timestamp * 1000) : undefined);
 
-const getMockSubscriptionStatus = (user) =>
-  buildSubscriptionStatusPayload(user);
+const getMockSubscriptionStatus = (user) => buildSubscriptionStatusPayload(user);
+
+const parseWebhookBody = (body) => {
+  if (Buffer.isBuffer(body)) return JSON.parse(body.toString('utf8'));
+  if (typeof body === 'string') return JSON.parse(body);
+  return body;
+};
 
 export const createCheckoutSession = asyncHandler(async (req, res) => {
   const { priceId, plan } = req.body;
-  const selectedPlan = plan || (priceId && priceId.toLowerCase().includes('year') ? 'yearly' : 'monthly');
+  const selectedPlan =
+    plan || (priceId && priceId.toLowerCase().includes('year') ? 'yearly' : 'monthly');
   const resolvedPriceId = resolvePriceId(selectedPlan, priceId);
   const user = await User.findById(req.user._id);
   if (!user) throw new ApiError(404, 'User not found');
 
-  const hasRealStripeKey = Boolean(process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.includes('placeholder'));
-  const allowMockStripe = process.env.NODE_ENV !== 'production' && !hasRealStripeKey;
+  const hasRealStripeKey = !isPlaceholderValue(process.env.STRIPE_SECRET_KEY);
+  const hasRequiredPriceId = !isPlaceholderValue(
+    selectedPlan === 'yearly'
+      ? process.env.STRIPE_YEARLY_PRICE_ID
+      : process.env.STRIPE_MONTHLY_PRICE_ID
+  );
+  const allowMockStripe =
+    process.env.NODE_ENV !== 'production' && (!hasRealStripeKey || !hasRequiredPriceId);
   if (allowMockStripe) {
     const now = Date.now();
     const days = selectedPlan === 'yearly' ? 365 : 30;
@@ -65,12 +81,15 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
   if (!resolvedPriceId) {
     throw new ApiError(
       400,
-      `Missing Stripe price for ${selectedPlan} plan. Set STRIPE_${selectedPlan.toUpperCase()}_PRICE_ID on the backend.`
+      `Missing Stripe price for ${selectedPlan} plan. Set STRIPE_${selectedPlan.toUpperCase()}_PRICE_ID on the backend, or use test mode without Stripe config.`
     );
   }
 
   if (!hasRealStripeKey) {
-    throw new ApiError(500, 'Stripe is not configured for production. Set STRIPE_SECRET_KEY before enabling subscriptions.');
+    throw new ApiError(
+      500,
+      'Stripe is not configured for production. Set STRIPE_SECRET_KEY before enabling subscriptions.'
+    );
   }
 
   if (!user.stripeCustomerId) {
@@ -79,17 +98,26 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
     await user.save();
   }
 
-  const subscription = await stripeService.createSubscription(user.stripeCustomerId, resolvedPriceId);
+  const subscription = await stripeService.createSubscription(
+    user.stripeCustomerId,
+    resolvedPriceId
+  );
 
   user.stripeSubscriptionId = subscription.id;
   user.subscriptionPlan = selectedPlan;
   await user.save();
 
-  sendApiResponse(res, 200, {
-    subscriptionId: subscription.id,
-    clientSecret: subscription.latest_invoice.payment_intent.client_secret,
-    plan: selectedPlan
-  }, 'Checkout session created successfully', { legacy: true });
+  sendApiResponse(
+    res,
+    200,
+    {
+      subscriptionId: subscription.id,
+      clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+      plan: selectedPlan,
+    },
+    'Checkout session created successfully',
+    { legacy: true }
+  );
 });
 
 export const cancelSubscription = asyncHandler(async (req, res) => {
@@ -116,11 +144,23 @@ export const getSubscriptionStatus = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) throw new ApiError(404, 'User not found');
   if (!user.stripeSubscriptionId) {
-    return sendApiResponse(res, 200, { status: 'inactive' }, 'Subscription status loaded successfully', { legacy: true });
+    return sendApiResponse(
+      res,
+      200,
+      { status: 'inactive' },
+      'Subscription status loaded successfully',
+      { legacy: true }
+    );
   }
 
   if (user.stripeSubscriptionId.startsWith('mock_sub_')) {
-    return sendApiResponse(res, 200, getMockSubscriptionStatus(user), 'Subscription status loaded successfully', { legacy: true });
+    return sendApiResponse(
+      res,
+      200,
+      getMockSubscriptionStatus(user),
+      'Subscription status loaded successfully',
+      { legacy: true }
+    );
   }
 
   const subscription = await stripeService.getSubscription(user.stripeSubscriptionId);
@@ -138,7 +178,25 @@ export const handleWebhook = async (req, res) => {
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    const allowInsecureWebhookTest =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ALLOW_INSECURE_WEBHOOK_TEST === 'true' &&
+      req.headers['x-webhook-test'] === 'true';
+
+    if (allowInsecureWebhookTest) {
+      event = parseWebhookBody(req.body);
+    } else {
+      const rawPayload =
+        Buffer.isBuffer(req.body) || typeof req.body === 'string'
+          ? req.body
+          : req.rawBody;
+
+      if (!rawPayload) {
+        throw new Error('Missing raw webhook body for signature verification');
+      }
+
+      event = stripe.webhooks.constructEvent(rawPayload, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    }
   } catch (err) {
     console.error('Webhook signature failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -150,7 +208,8 @@ export const handleWebhook = async (req, res) => {
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        const plan = data.items?.data?.[0]?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+        const plan =
+          data.items?.data?.[0]?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly';
         const subscriptionRenewDate = getRenewDateFromUnix(data.current_period_end);
 
         const user = await User.findOneAndUpdate(
@@ -159,7 +218,7 @@ export const handleWebhook = async (req, res) => {
             subscriptionStatus: data.status === 'active' ? 'active' : 'inactive',
             stripeSubscriptionId: data.id,
             subscriptionPlan: plan,
-            ...(subscriptionRenewDate && { subscriptionRenewDate })
+            ...(subscriptionRenewDate && { subscriptionRenewDate }),
           },
           { new: true }
         );
@@ -175,7 +234,7 @@ export const handleWebhook = async (req, res) => {
               plan,
               status: data.status === 'active' ? 'active' : 'past_due',
               currentPeriodStart: getRenewDateFromUnix(data.current_period_start),
-              currentPeriodEnd: subscriptionRenewDate
+              currentPeriodEnd: subscriptionRenewDate,
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
           );
@@ -200,7 +259,7 @@ export const handleWebhook = async (req, res) => {
             { stripeCustomerId: data.customer },
             {
               subscriptionStatus: 'active',
-              ...(renewDate && { subscriptionRenewDate: renewDate })
+              ...(renewDate && { subscriptionRenewDate: renewDate }),
             }
           );
         }

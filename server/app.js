@@ -26,7 +26,15 @@ const registerMiddleware = () => {
   app.use(cors(createCorsOptions(allowedOrigins)));
   app.use(helmet());
   app.use(morgan(isProduction ? 'combined' : 'dev'));
-  app.use(express.json());
+  app.use(
+    express.json({
+      verify: (req, res, buf) => {
+        if (req.originalUrl?.startsWith('/api/subscriptions/webhook')) {
+          req.rawBody = Buffer.from(buf);
+        }
+      }
+    })
+  );
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 };
 
