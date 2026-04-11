@@ -4,11 +4,13 @@ import { ApiError } from '../utils/apiError.js';
 import { sendApiResponse } from '../utils/apiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
+const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+
 const buildAuthPayload = (user, token) => ({
   _id: user._id,
   name: user.name,
   email: user.email,
-  role: user.role,
+  role: normalizeRole(user.role),
   subscriptionStatus: user.subscriptionStatus,
   token,
 });
@@ -17,6 +19,7 @@ const buildProfilePayload = (user) => ({
   _id: user._id,
   name: user.name,
   email: user.email,
+  role: normalizeRole(user.role),
   charityPercentage: user.charityPercentage,
   selectedCharity: user.selectedCharity,
 });
