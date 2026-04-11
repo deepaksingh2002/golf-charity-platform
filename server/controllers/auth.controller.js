@@ -1,19 +1,61 @@
 import User from '../models/User.model.js';
-import { generateToken } from '../utils/jwt.util.js';
+import jwt from 'jsonwebtoken';
 import { ApiError } from '../utils/apiError.js';
 import { sendApiResponse } from '../utils/apiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import {
+  getAccessTokenCookieOptions,
+  getRefreshTokenCookieOptions,
+  getClearAuthCookieOptions,
+} from '../utils/authCookies.js';
 
-const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+const normalizeRole = (role) => String(role || 'user').trim().toLowerCase();
 
-const buildAuthPayload = (user, token) => ({
-  _id: user._id,
-  name: user.name,
-  email: user.email,
-  role: normalizeRole(user.role),
-  subscriptionStatus: user.subscriptionStatus,
-  token,
-});
+const buildAuthPayload = (user, token) => {
+  const userRole = user?.role || 'user';
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: normalizeRole(userRole),
+    subscriptionStatus: user.subscriptionStatus,
+    token,
+  };
+};
+
+const parseCookieHeader = (cookieHeader = '') => {
+  return cookieHeader
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .reduce((acc, item) => {
+      const separatorIndex = item.indexOf('=');
+      if (separatorIndex <= 0) return acc;
+      const key = item.slice(0, separatorIndex).trim();
+      const value = item.slice(separatorIndex + 1).trim();
+      acc[key] = decodeURIComponent(value);
+      return acc;
+    }, {});
+};
+
+const readCookieToken = (req, key) => {
+  if (req.cookies?.[key]) return req.cookies[key];
+  const parsed = parseCookieHeader(req.headers?.cookie || '');
+  return parsed[key] || null;
+};
+
+const issueSessionTokens = async (user, req, res) => {
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
+
+  user.refreshToken = refreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  res.cookie('accessToken', accessToken, getAccessTokenCookieOptions(req));
+  res.cookie('refreshToken', refreshToken, getRefreshTokenCookieOptions(req));
+
+  return { accessToken, refreshToken };
+};
 
 const buildProfilePayload = (user) => ({
   _id: user._id,
@@ -42,24 +84,69 @@ export const register = asyncHandler(async (req, res) => {
   }
 
   const user = await User.create({ name, email, password });
-  const token = generateToken(user._id, user.role);
+  const { accessToken } = await issueSessionTokens(user, req, res);
 
-  sendApiResponse(res, 201, buildAuthPayload(user, token), 'Account created successfully', {
+  sendApiResponse(res, 201, buildAuthPayload(user, accessToken), 'Account created successfully', {
     legacy: true,
   });
 });
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email }).select('+password');
+  const user = await User.findOne({ email }).select('+password +refreshToken');
 
   if (!user || !(await user.comparePassword(password))) {
     throw new ApiError(401, 'Invalid email or password');
   }
 
-  const token = generateToken(user._id, user.role);
+  const { accessToken } = await issueSessionTokens(user, req, res);
 
-  sendApiResponse(res, 200, buildAuthPayload(user, token), 'Login successful', { legacy: true });
+  sendApiResponse(res, 200, buildAuthPayload(user, accessToken), 'Login successful', {
+    legacy: true,
+  });
+});
+
+export const refreshSession = asyncHandler(async (req, res) => {
+  const incomingRefreshToken = readCookieToken(req, 'refreshToken');
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, 'Refresh token is required');
+  }
+
+  if (!process.env.REFRESH_TOKEN_SECRET) {
+    throw new ApiError(500, 'Refresh token secret is not configured');
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+  } catch {
+    throw new ApiError(401, 'Invalid or expired refresh token');
+  }
+
+  const userId = decoded?._id || decoded?.id;
+  const user = await User.findById(userId).select('+refreshToken');
+
+  if (!user || user.refreshToken !== incomingRefreshToken) {
+    throw new ApiError(401, 'Refresh token is invalid');
+  }
+
+  const { accessToken } = await issueSessionTokens(user, req, res);
+
+  sendApiResponse(res, 200, buildAuthPayload(user, accessToken), 'Session refreshed successfully', {
+    legacy: true,
+  });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  if (req.user?._id) {
+    await User.findByIdAndUpdate(req.user._id, { $unset: { refreshToken: 1 } });
+  }
+
+  const clearOptions = getClearAuthCookieOptions(req);
+  res.clearCookie('accessToken', clearOptions);
+  res.clearCookie('refreshToken', clearOptions);
+
+  sendApiResponse(res, 200, null, 'Logged out successfully');
 });
 
 export const getMe = asyncHandler(async (req, res) => {
@@ -68,11 +155,12 @@ export const getMe = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'User not found');
   }
 
+  const userRole = user?.role || 'user';
   const payload = {
     _id: user._id,
     name: user.name,
     email: user.email,
-    role: normalizeRole(user.role),
+    role: normalizeRole(userRole),
     charityPercentage: user.charityPercentage,
     selectedCharity: user.selectedCharity,
     subscriptionStatus: user.subscriptionStatus,

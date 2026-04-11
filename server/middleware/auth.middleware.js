@@ -1,42 +1,119 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
-import { apiResponse, ApiError } from '../utils/apiError.js';
+import { ApiError } from '../utils/apiError.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { getAccessTokenCookieOptions } from '../utils/authCookies.js';
 
-const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+const normalizeRole = (role) => String(role || 'user').trim().toLowerCase();
 
-export const protect = async (req, res, next) => {
-  let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+const parseCookieHeader = (cookieHeader = '') => {
+  return cookieHeader
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .reduce((acc, item) => {
+      const separatorIndex = item.indexOf('=');
+      if (separatorIndex <= 0) return acc;
+      const key = item.slice(0, separatorIndex).trim();
+      const value = item.slice(separatorIndex + 1).trim();
+      acc[key] = decodeURIComponent(value);
+      return acc;
+    }, {});
+};
+
+const readCookieToken = (req, key) => {
+  if (req.cookies?.[key]) return req.cookies[key];
+  const parsed = parseCookieHeader(req.headers?.cookie || '');
+  return parsed[key] || null;
+};
+
+const logAuthFailure = (req, stage, error) => {
+  console.warn(`[AUTH] ${stage} failed`, {
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+    origin: req.get('origin') || null,
+    userAgent: req.get('user-agent') || null,
+    errorName: error?.name || 'UnknownError',
+    errorMessage: error?.message || 'Unknown auth error',
+  });
+};
+
+export const verifyJWT = asyncHandler(async (req, res, next) => {
+  const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
+  const headerToken = req
+    .header('Authorization')
+    ?.replace(/^Bearer\s+/i, '')
+    ?.trim();
+  const accessToken = headerToken || readCookieToken(req, 'accessToken');
+
+  if (accessToken) {
     try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
-        return res.status(401).json({ message: 'User not found' });
+      const decodedToken = jwt.verify(accessToken, accessTokenSecret);
+      const userId = decodedToken?._id || decodedToken?.id;
+      const user = await User.findById(userId).select('-password');
+
+      if (user) {
+        user.role = normalizeRole(user.role || decodedToken?.role);
+        req.user = user;
+        return next();
       }
 
-      req.user.role = normalizeRole(req.user.role || decoded.role);
-      return next();
+      logAuthFailure(req, 'access-token-user-lookup', new Error('User not found for access token'));
     } catch (error) {
-      return res.status(401).json({ message: 'Not authorized, token failed' });
+      logAuthFailure(req, 'access-token-verify', error);
+      // Fall through to refresh token check when access token is invalid/expired.
     }
   }
 
-  if (!token) {
-    return res.status(401).json({ message: 'Not authorized, no token' });
+  const refreshToken = readCookieToken(req, 'refreshToken');
+  if (!refreshToken) {
+    logAuthFailure(req, 'refresh-token-missing', new Error('Refresh token cookie is missing'));
+    throw new ApiError(401, 'Invalid access token.');
   }
-};
+
+  if (!process.env.REFRESH_TOKEN_SECRET) {
+    logAuthFailure(req, 'refresh-token-config', new Error('REFRESH_TOKEN_SECRET is not configured'));
+    throw new ApiError(401, 'Refresh token expired or invalid');
+  }
+
+  let decodedRefreshToken;
+  try {
+    decodedRefreshToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+  } catch (error) {
+    logAuthFailure(req, 'refresh-token-verify', error);
+    throw new ApiError(401, 'Refresh token expired or invalid');
+  }
+
+  const refreshUserId = decodedRefreshToken?._id || decodedRefreshToken?.id;
+  const user = await User.findById(refreshUserId).select('+refreshToken');
+  if (!user || user.refreshToken !== refreshToken) {
+    logAuthFailure(req, 'refresh-token-database-check', new Error('Refresh token mismatch or user missing'));
+    throw new ApiError(401, 'Invalid refresh token');
+  }
+
+  // Auto-heal expired access tokens for authenticated sessions using a valid refresh cookie.
+  const newAccessToken = user.generateAccessToken();
+
+  res.cookie('accessToken', newAccessToken, getAccessTokenCookieOptions(req));
+
+  req.user = await User.findById(user._id).select('-password');
+  req.user.role = normalizeRole(req.user.role);
+  return next();
+});
+
+export const protect = verifyJWT;
 
 export const adminOnly = (req, res, next) => {
   if (req.user && normalizeRole(req.user.role) === 'admin') {
     return next();
   }
-  return res.status(403).json({ message: 'Not authorized as an admin' });
+  throw new ApiError(403, 'Not authorized as an admin');
 };
 
 export const subscriberOnly = (req, res, next) => {
   if (req.user && (req.user.subscriptionStatus === 'active' || normalizeRole(req.user.role) === 'admin')) {
     return next();
   }
-  return res.status(403).json({ message: 'Active subscription required' });
+  throw new ApiError(403, 'Active subscription required');
 };

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
@@ -19,11 +20,15 @@ const userSchema = new mongoose.Schema({
     select: false 
 
   },
+  refreshToken: {
+    type: String,
+    select: false,
+  },
   role: { 
     type: String, 
     enum: ['user', 'admin'], 
-    default: 'user' 
-
+    default: 'user',
+    required: true
   },
   subscriptionStatus: { 
     type: String, 
@@ -92,6 +97,41 @@ userSchema.pre('save', async function() {
 
 userSchema.methods.comparePassword = async function(candidate) {
   return await bcrypt.compare(candidate, this.password);
+};
+
+userSchema.methods.isPasswordCorrect = async function(password) {
+  return await bcrypt.compare(password, this.password);
+};
+
+userSchema.methods.generateAccessToken = function() {
+  const accessSecret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
+
+  return jwt.sign(
+    {
+      _id: this._id,
+      id: this._id,
+      email: this.email,
+      role: this.role,
+      name: this.name,
+    },
+    accessSecret,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '7d',
+    }
+  );
+};
+
+userSchema.methods.generateRefreshToken = function() {
+  return jwt.sign(
+    {
+      _id: this._id,
+      id: this._id,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '30d',
+    }
+  );
 };
 
 export default mongoose.model('User', userSchema);

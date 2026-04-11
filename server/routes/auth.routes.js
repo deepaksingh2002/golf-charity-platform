@@ -1,6 +1,14 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { register, login, getMe, updateProfile, changePassword } from '../controllers/auth.controller.js';
+import {
+  register,
+  login,
+  refreshSession,
+  logout,
+  getMe,
+  updateProfile,
+  changePassword,
+} from '../controllers/auth.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import validate from '../middleware/validate.middleware.js';
 import { loginLimiter, registerLimiter } from '../middleware/rateLimiter.middleware.js';
@@ -52,6 +60,10 @@ router.post(
   validate,
   login
 );
+
+router.post('/refresh', refreshSession);
+
+router.post('/logout', protect, logout);
 
 router.get(
   '/me',
