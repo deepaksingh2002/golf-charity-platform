@@ -14,17 +14,23 @@ const drawSchema = new mongoose.Schema({
   }],
   drawType: { 
     type: String, 
-    enum: ['random', 'algorithmic'] 
+    enum: ['random', 'algorithmic'],
+    default: 'random'
   },
   status: { 
     type: String, 
-    enum: ['draft', 'simulated', 'published'] 
+    enum: ['draft', 'simulated', 'published'],
+    default: 'draft'
   },
   prizePool: {
     total: { 
       type: Number, 
       default: 0 
 
+    },
+    threeMatch: {
+      type: Number,
+      default: 0
     },
     fiveMatch: { 
       type: Number, 

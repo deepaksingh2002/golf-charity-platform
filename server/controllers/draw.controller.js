@@ -157,12 +157,25 @@ export const getPublishedDraws = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const skip = (page - 1) * limit;
 
-  const draws = await Draw.find({ status: 'published' })
-    .sort({ publishedAt: -1 })
-    .skip(skip)
-    .limit(limit);
+  const filter = { status: 'published' };
+  const [draws, total] = await Promise.all([
+    Draw.find(filter)
+      .sort({ publishedAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Draw.countDocuments(filter),
+  ]);
 
-  sendApiResponse(res, 200, draws, 'Draw history loaded successfully', { collectionKey: 'draws' });
+  sendApiResponse(res, 200, {
+    draws,
+    page,
+    limit,
+    total,
+    pages: Math.ceil(total / limit) || 1,
+  }, 'Draw history loaded successfully', {
+    collectionKey: 'draws',
+    legacy: true,
+  });
 });
 
 export const getCurrentDraw = asyncHandler(async (req, res) => {

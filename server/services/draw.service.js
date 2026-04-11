@@ -91,9 +91,9 @@ export const calculateWinners = async (drawId) => {
     return acc;
   }, { 3: [], 4: [], 5: [] });
 
-  const threeMatchPrize = matches[3].length > 0 ? prizePool.threeMatch / matches[3].length : 0;
-  const fourMatchPrize = matches[4].length > 0 ? prizePool.fourMatch / matches[4].length : 0;
-  const fiveMatchPrize = matches[5].length > 0 ? prizePool.fiveMatch / matches[5].length : 0;
+  const threeMatchPrize = matches[3].length > 0 ? (prizePool.threeMatch ?? 0) / matches[3].length : 0;
+  const fourMatchPrize = matches[4].length > 0 ? (prizePool.fourMatch ?? 0) / matches[4].length : 0;
+  const fiveMatchPrize = matches[5].length > 0 ? (prizePool.fiveMatch ?? 0) / matches[5].length : 0;
 
   return [
     ...matches[3].map(userId => ({ userId, matchCount: 3, prizeAmount: threeMatchPrize })),
