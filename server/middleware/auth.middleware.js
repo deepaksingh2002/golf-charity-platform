@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
+import { apiResponse, ApiError } from '../utils/apiError.js';
 
 const normalizeRole = (role) => String(role || '').trim().toLowerCase();
 
@@ -15,7 +16,7 @@ export const protect = async (req, res, next) => {
       }
 
       req.user.role = normalizeRole(req.user.role || decoded.role);
-      next();
+      return next();
     } catch (error) {
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
@@ -28,16 +29,14 @@ export const protect = async (req, res, next) => {
 
 export const adminOnly = (req, res, next) => {
   if (req.user && normalizeRole(req.user.role) === 'admin') {
-    next();
-  } else {
-    res.status(403).json({ message: 'Not authorized as an admin' });
+    return next();
   }
+  return res.status(403).json({ message: 'Not authorized as an admin' });
 };
 
 export const subscriberOnly = (req, res, next) => {
   if (req.user && (req.user.subscriptionStatus === 'active' || normalizeRole(req.user.role) === 'admin')) {
-    next();
-  } else {
-    res.status(403).json({ message: 'Active subscription required' });
+    return next();
   }
+  return res.status(403).json({ message: 'Active subscription required' });
 };

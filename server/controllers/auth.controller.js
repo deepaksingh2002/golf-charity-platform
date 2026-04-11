@@ -68,7 +68,17 @@ export const getMe = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'User not found');
   }
 
-  sendApiResponse(res, 200, user, 'Profile loaded successfully', { legacy: true });
+  const payload = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: normalizeRole(user.role),
+    charityPercentage: user.charityPercentage,
+    selectedCharity: user.selectedCharity,
+    subscriptionStatus: user.subscriptionStatus,
+  };
+
+  sendApiResponse(res, 200, payload, 'Profile loaded successfully', { legacy: true });
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {

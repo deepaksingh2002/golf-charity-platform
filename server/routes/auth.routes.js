@@ -7,14 +7,40 @@ import { loginLimiter, registerLimiter } from '../middleware/rateLimiter.middlew
 
 const router = express.Router();
 
+// ============================================================================
+// Validation Rules
+// ============================================================================
+
+const registerValidationRules = [
+  body('name', 'Name is required').notEmpty().trim(),
+  body('email', 'Please include a valid email').isEmail(),
+  body('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 })
+];
+
+const loginValidationRules = [
+  body('email', 'Please include a valid email').isEmail(),
+  body('password', 'Password is required').exists()
+];
+
+const updateProfileValidationRules = [
+  body('name', 'Name must not be empty').if((value) => value !== undefined).trim().notEmpty(),
+  body('email', 'Please include a valid email').if((value) => value !== undefined).isEmail(),
+  body('charityPercentage', 'Charity percentage must be between 10 and 100').if((value) => value !== undefined).isInt({ min: 10, max: 100 })
+];
+
+const changePasswordValidationRules = [
+  body('currentPassword', 'Current password is required').exists(),
+  body('newPassword', 'New password must be at least 6 characters').isLength({ min: 6 })
+];
+
+// ============================================================================
+// Routes
+// ============================================================================
+
 router.post(
   '/register',
   registerLimiter,
-  [
-    body('name', 'Name is required').notEmpty(),
-    body('email', 'Please include a valid email').isEmail(),
-    body('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 })
-  ],
+  registerValidationRules,
   validate,
   register
 );
@@ -22,25 +48,29 @@ router.post(
 router.post(
   '/login',
   loginLimiter,
-  [
-    body('email', 'Please include a valid email').isEmail(),
-    body('password', 'Password is required').exists()
-  ],
+  loginValidationRules,
   validate,
   login
 );
 
-router.get('/me', protect, getMe);
+router.get(
+  '/me',
+  protect,
+  getMe
+);
 
-router.put('/profile', protect, updateProfile);
+router.put(
+  '/profile',
+  protect,
+  updateProfileValidationRules,
+  validate,
+  updateProfile
+);
 
 router.put(
   '/change-password',
   protect,
-  [
-    body('currentPassword', 'Current password is required').exists(),
-    body('newPassword', 'New password must be at least 6 characters').isLength({ min: 6 })
-  ],
+  changePasswordValidationRules,
   validate,
   changePassword
 );
