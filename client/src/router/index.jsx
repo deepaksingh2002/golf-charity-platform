@@ -32,6 +32,7 @@ const AdminDrawsPage = lazy(() => import('../pages/admin/AdminDrawsPage'));
 const AdminCharitiesPage = lazy(() => import('../pages/admin/AdminCharitiesPage'));
 const AdminWinnersPage = lazy(() => import('../pages/admin/AdminWinnersPage'));
 const AdminUserDetailPage = lazy(() => import('../pages/admin/AdminUserDetailPage'));
+const AdminCharityReportPage = lazy(() => import('../pages/admin/AdminCharityReportPage'));
 
 export const router = createBrowserRouter([
   {
@@ -125,6 +126,7 @@ export const router = createBrowserRouter([
           { path: "draws", element: <AdminDrawsPage /> },
           { path: "charities", element: <AdminCharitiesPage /> },
           { path: "winners", element: <AdminWinnersPage /> },
+          { path: "charity-report", element: <AdminCharityReportPage /> },
         ]
       },
       {

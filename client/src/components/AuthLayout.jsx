@@ -8,9 +8,7 @@ export default function AuthLayout({ children, authentication = true }) {
   const navigate = useNavigate()
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const isAdmin = useSelector(selectIsAdmin)
-  const shouldRedirect = authentication
-    ? isAuthenticated === false
-    : isAuthenticated === true
+  const shouldRedirect = authentication ? isAuthenticated === false : isAuthenticated === true;
 
   useEffect(() => {
     if (!shouldRedirect) {

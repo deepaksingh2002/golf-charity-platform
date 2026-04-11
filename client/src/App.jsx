@@ -6,23 +6,29 @@ import { logout, selectToken, selectUser, updateUser } from './store/slices/auth
 import { Spinner } from './components/ui/Spinner';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
+const isUnauthorizedError = (error) => {
+  const status = error?.status;
+  return status === 401 || status === 403;
+};
+
 export default function App() {
   const dispatch = useDispatch();
   const token = useSelector(selectToken);
   const user = useSelector(selectUser);
   const location = useLocation();
 
-  // Hydrate auth state once from /auth/me when a persisted token exists.
+  // Keep auth state synchronized with backend identity whenever a token exists.
   const { data: userData, error, isLoading, isFetching } = useGetMeQuery(undefined, {
-    skip: !token || !!user, // Skip if no token or user already exists
+    skip: !token,
+    refetchOnMountOrArgChange: true,
   });
 
   useEffect(() => {
     if (userData) {
       dispatch(updateUser(userData));
     }
-    // On 401 or explicit error, logout
-    if (error) {
+    // Logout only for authentication/authorization failures.
+    if (error && isUnauthorizedError(error)) {
       console.warn('Auth hydration failed:', error);
       dispatch(logout());
     }
