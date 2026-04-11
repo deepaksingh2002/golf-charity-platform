@@ -12,7 +12,7 @@ export const getCharities = asyncHandler(async (req, res) => {
   if (req.query.search) {
     query.$or = [
       { name: { $regex: req.query.search, $options: 'i' } },
-      { description: { $regex: req.query.search, $options: 'i' } }
+      { description: { $regex: req.query.search, $options: 'i' } },
     ];
   }
 
@@ -21,7 +21,9 @@ export const getCharities = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limit);
 
-  sendApiResponse(res, 200, charities, 'Charities loaded successfully', { collectionKey: 'charities' });
+  sendApiResponse(res, 200, charities, 'Charities loaded successfully', {
+    collectionKey: 'charities',
+  });
 });
 
 export const getCharity = asyncHandler(async (req, res) => {
@@ -44,7 +46,7 @@ export const createCharity = asyncHandler(async (req, res) => {
     description,
     website,
     imageUrl,
-    galleryImages
+    galleryImages,
   });
 
   sendApiResponse(res, 201, charity, 'Charity created successfully', { legacy: true });
@@ -60,7 +62,11 @@ export const updateCharity = asyncHandler(async (req, res) => {
 });
 
 export const deleteCharity = asyncHandler(async (req, res) => {
-  const charity = await Charity.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+  const charity = await Charity.findByIdAndUpdate(
+    req.params.id,
+    { isActive: false },
+    { new: true }
+  );
   if (!charity) {
     throw new ApiError(404, 'Charity not found');
   }
@@ -76,7 +82,9 @@ export const toggleFeatured = asyncHandler(async (req, res) => {
 
   charity.isFeatured = !charity.isFeatured;
   await charity.save();
-  sendApiResponse(res, 200, charity, 'Charity featured status updated successfully', { legacy: true });
+  sendApiResponse(res, 200, charity, 'Charity featured status updated successfully', {
+    legacy: true,
+  });
 });
 
 export const addEvent = asyncHandler(async (req, res) => {

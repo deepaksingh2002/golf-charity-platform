@@ -10,19 +10,25 @@ import { findByIdOrThrow, findLatestUnpublishedDraw } from '../utils/dbHelpers.j
 
 const getRevenueBreakdown = (subscriptions = [], users = []) => {
   if (subscriptions.length > 0) {
-    return subscriptions.reduce((totals, subscription) => {
-      if (subscription.plan === 'monthly') totals.monthlyRevenue += 10;
-      if (subscription.plan === 'yearly') totals.yearlyRevenue += 100 / 12;
-      return totals;
-    }, { monthlyRevenue: 0, yearlyRevenue: 0, participantCount: subscriptions.length });
+    return subscriptions.reduce(
+      (totals, subscription) => {
+        if (subscription.plan === 'monthly') totals.monthlyRevenue += 10;
+        if (subscription.plan === 'yearly') totals.yearlyRevenue += 100 / 12;
+        return totals;
+      },
+      { monthlyRevenue: 0, yearlyRevenue: 0, participantCount: subscriptions.length }
+    );
   }
 
-  return users.reduce((totals, user) => {
-    if (user.subscriptionPlan === 'yearly') totals.yearlyRevenue += 100 / 12;
-    else totals.monthlyRevenue += 10;
-    totals.participantCount += 1;
-    return totals;
-  }, { monthlyRevenue: 0, yearlyRevenue: 0, participantCount: 0 });
+  return users.reduce(
+    (totals, user) => {
+      if (user.subscriptionPlan === 'yearly') totals.yearlyRevenue += 100 / 12;
+      else totals.monthlyRevenue += 10;
+      totals.participantCount += 1;
+      return totals;
+    },
+    { monthlyRevenue: 0, yearlyRevenue: 0, participantCount: 0 }
+  );
 };
 
 const buildParticipationStatus = (user) => {
@@ -32,15 +38,12 @@ const buildParticipationStatus = (user) => {
   return {
     isEligible: hasEnoughScores && isSubscribed,
     hasEnoughScores,
-    isSubscribed
+    isSubscribed,
   };
 };
 
-const getDrawByParam = (id) => (
-  id === 'current'
-    ? findLatestUnpublishedDraw(Draw)
-    : findByIdOrThrow(Draw, id, 'Draw not found')
-);
+const getDrawByParam = (id) =>
+  id === 'current' ? findLatestUnpublishedDraw(Draw) : findByIdOrThrow(Draw, id, 'Draw not found');
 
 export const createDraw = asyncHandler(async (req, res) => {
   const { month, drawType, forced } = req.body;
@@ -54,11 +57,14 @@ export const createDraw = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Draw already exists for this month');
   }
   if (existing && forced) {
-    return sendApiResponse(res, 200, existing, 'Draw already exists for this month', { legacy: true });
+    return sendApiResponse(res, 200, existing, 'Draw already exists for this month', {
+      legacy: true,
+    });
   }
 
   const activeSubs = await Subscription.find({ status: 'active' });
-  const activeUsers = activeSubs.length > 0 ? [] : await User.find({ subscriptionStatus: 'active' });
+  const activeUsers =
+    activeSubs.length > 0 ? [] : await User.find({ subscriptionStatus: 'active' });
   const revenueBreakdown = getRevenueBreakdown(activeSubs, activeUsers);
 
   const lastDraw = await Draw.findOne().sort({ createdAt: -1 });
@@ -75,7 +81,7 @@ export const createDraw = asyncHandler(async (req, res) => {
     drawType: type,
     status: 'draft',
     prizePool,
-    participantCount: revenueBreakdown.participantCount
+    participantCount: revenueBreakdown.participantCount,
   });
 
   sendApiResponse(res, 201, draw, 'Draw created successfully', { legacy: true });
@@ -169,7 +175,7 @@ export const getCurrentDraw = asyncHandler(async (req, res) => {
     200,
     {
       ...draw.toObject(),
-      userParticipationStatus: buildParticipationStatus(user)
+      userParticipationStatus: buildParticipationStatus(user),
     },
     'Current draw loaded successfully',
     { legacy: true }
@@ -182,7 +188,9 @@ export const uploadWinnerProof = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const draw = await findByIdOrThrow(Draw, id, 'Draw not found');
 
-  const winnerIndex = draw.winners.findIndex(w => w.userId.toString() === req.user._id.toString());
+  const winnerIndex = draw.winners.findIndex(
+    (w) => w.userId.toString() === req.user._id.toString()
+  );
   if (winnerIndex === -1) {
     throw new ApiError(403, 'You are not a winner of this draw');
   }
@@ -190,5 +198,7 @@ export const uploadWinnerProof = asyncHandler(async (req, res) => {
   draw.winners[winnerIndex].proofUrl = `/uploads/proofs/${req.file.filename}`;
   await draw.save();
 
-  sendApiResponse(res, 200, draw.winners[winnerIndex], 'Winner proof uploaded successfully', { legacy: true });
+  sendApiResponse(res, 200, draw.winners[winnerIndex], 'Winner proof uploaded successfully', {
+    legacy: true,
+  });
 });

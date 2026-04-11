@@ -10,7 +10,7 @@ const buildAuthPayload = (user, token) => ({
   email: user.email,
   role: user.role,
   subscriptionStatus: user.subscriptionStatus,
-  token
+  token,
 });
 
 const buildProfilePayload = (user) => ({
@@ -18,7 +18,7 @@ const buildProfilePayload = (user) => ({
   name: user.name,
   email: user.email,
   charityPercentage: user.charityPercentage,
-  selectedCharity: user.selectedCharity
+  selectedCharity: user.selectedCharity,
 });
 
 const findUserById = (userId, { includePassword = false, populate = null } = {}) => {
@@ -41,7 +41,9 @@ export const register = asyncHandler(async (req, res) => {
   const user = await User.create({ name, email, password });
   const token = generateToken(user._id, user.role);
 
-  sendApiResponse(res, 201, buildAuthPayload(user, token), 'Account created successfully', { legacy: true });
+  sendApiResponse(res, 201, buildAuthPayload(user, token), 'Account created successfully', {
+    legacy: true,
+  });
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -96,7 +98,9 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   const updatedUser = await user.save();
 
-  sendApiResponse(res, 200, buildProfilePayload(updatedUser), 'Profile updated successfully', { legacy: true });
+  sendApiResponse(res, 200, buildProfilePayload(updatedUser), 'Profile updated successfully', {
+    legacy: true,
+  });
 });
 
 export const changePassword = asyncHandler(async (req, res) => {

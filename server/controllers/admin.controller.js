@@ -9,13 +9,15 @@ import {
   getAdminCharityReport,
   updateAdminUserScore,
   updateAdminSubscription,
-  verifyAdminWinner
+  verifyAdminWinner,
 } from '../services/admin.service.js';
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
   const dashboardStats = await getAdminDashboardStats();
 
-  sendApiResponse(res, 200, dashboardStats, 'Dashboard stats loaded successfully', { legacy: true });
+  sendApiResponse(res, 200, dashboardStats, 'Dashboard stats loaded successfully', {
+    legacy: true,
+  });
 });
 
 export const getAllUsers = asyncHandler(async (req, res) => {
@@ -38,7 +40,9 @@ export const editUserScore = asyncHandler(async (req, res) => {
   const { value, date } = req.body;
 
   const scores = await updateAdminUserScore(userId, scoreId, value, date);
-  sendApiResponse(res, 200, scores, 'User scores updated successfully', { collectionKey: 'scores' });
+  sendApiResponse(res, 200, scores, 'User scores updated successfully', {
+    collectionKey: 'scores',
+  });
 });
 
 export const manageSubscription = asyncHandler(async (req, res) => {
@@ -53,7 +57,9 @@ export const getWinnersList = asyncHandler(async (req, res) => {
   const { paymentStatus } = req.query;
   const allWinners = await getAdminWinners(paymentStatus);
 
-  sendApiResponse(res, 200, allWinners, 'Winners loaded successfully', { collectionKey: 'winners' });
+  sendApiResponse(res, 200, allWinners, 'Winners loaded successfully', {
+    collectionKey: 'winners',
+  });
 });
 
 export const verifyWinner = asyncHandler(async (req, res) => {
@@ -66,6 +72,6 @@ export const getCharityReport = asyncHandler(async (req, res) => {
   const charityReport = await getAdminCharityReport();
 
   sendApiResponse(res, 200, charityReport, 'Charity report loaded successfully', {
-    collectionKey: 'charityReport'
+    collectionKey: 'charityReport',
   });
 });

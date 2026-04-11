@@ -20,7 +20,9 @@ export const addScore = asyncHandler(async (req, res) => {
   user.scores.push({ value, date });
   await user.save();
 
-  sendApiResponse(res, 201, sortScoresDesc(user.scores), 'Score added successfully', { collectionKey: 'scores' });
+  sendApiResponse(res, 201, sortScoresDesc(user.scores), 'Score added successfully', {
+    collectionKey: 'scores',
+  });
 });
 
 export const getScores = asyncHandler(async (req, res) => {
@@ -29,7 +31,9 @@ export const getScores = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'User not found');
   }
 
-  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Scores loaded successfully', { collectionKey: 'scores' });
+  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Scores loaded successfully', {
+    collectionKey: 'scores',
+  });
 });
 
 export const updateScore = asyncHandler(async (req, res) => {
@@ -54,7 +58,9 @@ export const updateScore = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Score updated successfully', { collectionKey: 'scores' });
+  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Score updated successfully', {
+    collectionKey: 'scores',
+  });
 });
 
 export const deleteScore = asyncHandler(async (req, res) => {
@@ -72,5 +78,7 @@ export const deleteScore = asyncHandler(async (req, res) => {
   user.scores.pull(scoreId);
   await user.save();
 
-  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Score deleted successfully', { collectionKey: 'scores' });
+  sendApiResponse(res, 200, sortScoresDesc(user.scores), 'Score deleted successfully', {
+    collectionKey: 'scores',
+  });
 });
