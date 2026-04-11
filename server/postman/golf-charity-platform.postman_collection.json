@@ -1,0 +1,188 @@
+﻿{
+  "info": {
+    "_postman_id": "9d0d5b9a-9f31-4f9b-9d54-4f2d5d2db2f1",
+    "name": "Golf Charity Platform API",
+    "description": "Production base URL: https://golf-charity-6fnp.onrender.com\n\nRun Register or Login first so `authToken` is populated before using protected requests.\n\nScore endpoints require an active subscription, so run the subscription request before Add Score / Get Scores.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const now = new Date();",
+          "pm.environment.set('todayIso', now.toISOString().split('T')[0]);",
+          "pm.environment.set('eventDate', new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString());",
+          "pm.environment.set('currentMonth', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Public",
+      "item": [
+        {
+          "name": "Health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/health" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "pm.test('health ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"] } }]
+        },
+        {
+          "name": "List Charities",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/charities?limit=10&page=1" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "const j = pm.response.json();", "const a = j.charities || j.data || [];", "if (Array.isArray(a) && a[0]?._id) pm.environment.set('charityId', a[0]._id);"] } }]
+        },
+        {
+          "name": "List Draws",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/draws?limit=10&page=1" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "const j = pm.response.json();", "const a = j.draws || j.data || [];", "if (Array.isArray(a) && a[0]?._id) pm.environment.set('drawId', a[0]._id);"] } }]
+        },
+        {
+          "name": "Webhook (manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "stripe-signature", "value": "t=1,v1=replace-with-a-valid-signature" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"invoice.payment_succeeded\",\n  \"data\": {\n    \"object\": {\n      \"subscription\": \"sub_test\",\n      \"customer\": \"cus_test\",\n      \"lines\": {\n        \"data\": [\n          { \"period\": { \"end\": 1712467200 } }\n        ]\n      }\n    }\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/subscriptions/webhook"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{testName}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/register" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201', () => pm.expect(pm.response.code).to.eql(201));", "const j = pm.response.json();", "const u = j.data || j;", "if (u.token) pm.environment.set('authToken', u.token);", "if (u._id) pm.environment.set('userId', u._id);"] } }]
+        },
+        {
+          "name": "Login",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/login" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "const j = pm.response.json();", "const u = j.data || j;", "if (u.token) pm.environment.set('authToken', u.token);", "if (u._id) pm.environment.set('userId', u._id);"] } }]
+        },
+        {
+          "name": "Me",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "const j = pm.response.json();", "if (j._id) pm.environment.set('userId', j._id);"] } }]
+        },
+        {
+          "name": "Update Profile",
+          "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{testName}} Updated\",\n  \"charityPercentage\": 15,\n  \"selectedCharity\": \"{{charityId}}\"\n}" }, "url": "{{baseUrl}}/api/auth/profile" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "const j = pm.response.json();", "if (j._id) pm.environment.set('userId', j._id);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 Scores",
+      "item": [
+        {
+          "name": "Add Score",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"value\": 18,\n  \"date\": \"{{todayIso}}\"\n}" }, "url": "{{baseUrl}}/api/scores" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201', () => pm.expect(pm.response.code).to.eql(201));", "const j = pm.response.json();", "const a = j.scores || j.data || [];", "if (Array.isArray(a) && a[0]?._id) pm.environment.set('scoreId', a[0]._id);"] } }]
+        },
+        {
+          "name": "Get Scores",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/scores" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "04 Subscriptions",
+      "item": [
+        {
+          "name": "Status",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/subscriptions/status" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        },
+        {
+          "name": "Subscribe",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"plan\": \"monthly\"\n}" }, "url": "{{baseUrl}}/api/subscriptions/subscribe" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 Draws",
+      "item": [
+        {
+          "name": "Current Draw",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/draws/current" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "const j = pm.response.json();", "const d = j.data || j;", "if (d._id) pm.environment.set('drawId', d._id);"] } }]
+        },
+        {
+          "name": "Create Draw",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"drawType\": \"random\"\n}" }, "url": "{{baseUrl}}/api/draws" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201', () => pm.expect(pm.response.code).to.eql(201));", "const j = pm.response.json();", "const d = j.data || j;", "if (d._id) pm.environment.set('drawId', d._id);"] } }]
+        },
+        {
+          "name": "Simulate Draw",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/draws/{{drawId}}/simulate" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        },
+        {
+          "name": "Publish Draw",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/draws/{{drawId}}/publish" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        },
+        {
+          "name": "Upload Winner Proof",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "proof", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/draws/{{drawId}}/proof"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "06 Admin",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/dashboard" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        },
+        {
+          "name": "Users",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/users?limit=10&page=1" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));", "const j = pm.response.json();", "const a = j.users || j.data?.users || [];", "if (Array.isArray(a) && a[0]?._id) pm.environment.set('userId', a[0]._id);"] } }]
+        },
+        {
+          "name": "Winners",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/winners" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.expect(pm.response.code).to.eql(200));"] } }]
+        },
+        {
+          "name": "Create Charity",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Sample Charity\",\n  \"description\": \"Created from Postman\",\n  \"website\": \"https://example.com\",\n  \"imageUrl\": \"https://example.com/image.jpg\"\n}" }, "url": "{{baseUrl}}/api/charities" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('201', () => pm.expect(pm.response.code).to.eql(201));", "const j = pm.response.json();", "const c = j.data || j;", "if (c._id) pm.environment.set('charityId', c._id);"] } }]
+        }
+      ]
+    }
+  ]
+}
