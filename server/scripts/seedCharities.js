@@ -10,7 +10,18 @@ const charities = [
 
 const run = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const mongoConnectionString = process.env.MONGO_CONNECTION_STRING;
+    const dbName = process.env.MONGO_DB_NAME;
+
+    if (!mongoConnectionString) {
+      throw new Error('MONGO_CONNECTION_STRING is required');
+    }
+
+    if (!dbName) {
+      throw new Error('MONGO_DB_NAME is required');
+    }
+
+    await mongoose.connect(mongoConnectionString, { dbName });
     for (const charity of charities) {
       await Charity.findOneAndUpdate(
         { name: charity.name },

@@ -5,16 +5,24 @@ import { BarChart3, Users, Trophy, HeartHandshake, Award, LogOut, ChevronRight, 
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { logout, selectUser } from '../../store/slices/authSlice';
+import { useLogoutMutation } from '../../store/api/authApiSlice';
 
 export default function AdminLayout() {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
+  const [logoutSession] = useLogoutMutation();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logoutSession().unwrap();
+    } catch {
+      // Ensure local sign-out still happens even if server call fails.
+    } finally {
+      dispatch(logout());
+      navigate('/login');
+    }
   };
 
   const navItems = [

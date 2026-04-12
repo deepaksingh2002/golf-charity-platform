@@ -2,13 +2,44 @@
 
 This backend runs on Render, with the frontend deployed on Vercel.
 
+## MongoDB Atlas Constraint
+
+- `MONGO_CONNECTION_STRING` should point to your Atlas cluster.
+- `MONGO_DB_NAME` is enforced by the server and scripts as the target database name.
+- Allowed database-name characters: letters, numbers, `_`, `-`.
+
+## Admin Bootstrap Configuration
+
+- On server startup, admin user bootstrap runs automatically.
+- Required env vars:
+  - `ADMIN_EMAIL`
+  - `ADMIN_PASSWORD`
+- Optional env var:
+  - `ADMIN_SYNC_PASSWORD_ON_BOOT=true|false` (default: `true`)
+
+Behavior:
+
+- If admin user does not exist, it is created.
+- If admin user exists, role and status are enforced:
+  - `role = admin`
+  - `subscriptionStatus = active`
+- Password sync behavior depends on `ADMIN_SYNC_PASSWORD_ON_BOOT`.
+
+Manual command (optional):
+
+- `npm run create:admin`
+
 ## Public Endpoints
 
 - `GET /api/health`
+- `GET /api/v1/health`
 - `GET /api/charities`
 - `GET /api/charities/:id`
 - `GET /api/draws`
 - `POST /api/subscriptions/webhook`
+- `POST /api/v1/subscriptions/webhook`
+
+Versioned aliases are available under `/api/v1/*` while `/api/*` remains supported for backward compatibility.
 
 ## Protected Endpoints
 
@@ -51,8 +82,5 @@ Authenticated users only:
 
 ## Notes
 
-- Proof uploads now use a local fallback path under `/uploads/proofs/...` if Cloudinary is unavailable.
-- The admin dashboard response keeps compatibility aliases for the current frontend:
-  - `activeSubscriptions`
-  - `totalDonated`
-  - `monthlyPool`
+- Winner proof uploads are handled through Cloudinary and require valid Cloudinary credentials.
+- API success responses now use one consistent envelope: `{ statusCode, data, message, success }`.

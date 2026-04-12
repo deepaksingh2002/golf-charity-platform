@@ -8,14 +8,14 @@ import path from 'path';
 import { handleWebhook } from './controllers/subscription.controller.js';
 import { getHealthStatus } from './controllers/system.controller.js';
 import { buildAllowedOrigins, createCorsOptions } from './utils/cors.js';
+import { notFoundHandler, errorHandler } from './utils/apiError.js';
 import { registerRoutes } from './routes/index.js';
-import { notFoundHandler } from './middleware/notFound.middleware.js';
-import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
 const allowedOrigins = buildAllowedOrigins({
   corsOrigins: process.env.CORS_ORIGINS,
@@ -28,6 +28,7 @@ const registerMiddleware = () => {
   app.use(morgan(isProduction ? 'combined' : 'dev'));
   app.use(
     express.json({
+      limit: '1mb',
       verify: (req, res, buf) => {
         if (req.originalUrl?.startsWith('/api/subscriptions/webhook')) {
           req.rawBody = Buffer.from(buf);
@@ -35,6 +36,7 @@ const registerMiddleware = () => {
       }
     })
   );
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 };
 

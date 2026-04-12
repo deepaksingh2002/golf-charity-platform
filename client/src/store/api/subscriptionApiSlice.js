@@ -14,6 +14,10 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
       query: () => '/subscriptions/status',
       providesTags: ['Subscription'],
     }),
+    getSubscriptionConfigStatus: builder.query({
+      query: () => '/subscriptions/config-status',
+      providesTags: ['Subscription'],
+    }),
     cancelSubscription: builder.mutation({
       query: () => ({
         url: '/subscriptions/cancel',
@@ -27,6 +31,7 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
 export const {
   useSubscribeMutation,
   useGetSubscriptionStatusQuery,
+  useGetSubscriptionConfigStatusQuery,
   useCancelSubscriptionMutation,
 } = subscriptionApiSlice;
 

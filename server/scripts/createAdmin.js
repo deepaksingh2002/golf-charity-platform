@@ -1,37 +1,27 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import User from '../models/User.model.js';
+import { bootstrapAdminUser } from '../services/adminBootstrap.service.js';
 
 const run = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    const email = process.env.ADMIN_EMAIL || 'admin@golfcharity.com';
-    const password = process.env.ADMIN_PASSWORD;
+    const mongoConnectionString = process.env.MONGO_CONNECTION_STRING;
+    const dbName = process.env.MONGO_DB_NAME;
 
-    if (!password) {
-      throw new Error('ADMIN_PASSWORD is required to create or update the admin user.');
+    if (!mongoConnectionString) {
+      throw new Error('MONGO_CONNECTION_STRING is required');
     }
 
-    const existing = await User.findOne({ email }).select('+password');
-
-    if (existing) {
-      existing.name = 'Platform Admin';
-      existing.role = 'admin';
-      existing.subscriptionStatus = 'active';
-      existing.password = password;
-      await existing.save();
-      console.log(`Admin updated: ${email}`);
-      return;
+    if (!dbName) {
+      throw new Error('MONGO_DB_NAME is required');
     }
 
-    await User.create({
-      name: 'Platform Admin',
-      email,
-      password,
-      role: 'admin',
-      subscriptionStatus: 'active'
-    });
-    console.log(`Admin created: ${email}`);
+    await mongoose.connect(mongoConnectionString, { dbName });
+    const result = await bootstrapAdminUser();
+    if (result.status === 'skipped') {
+      throw new Error(result.reason);
+    }
+
+    console.log(`Admin ${result.status}: ${result.email}`);
   } catch (err) {
     console.error(err);
     process.exitCode = 1;

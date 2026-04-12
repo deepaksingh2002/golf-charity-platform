@@ -2,7 +2,7 @@ import express from 'express';
 import { body } from 'express-validator';
 import { getCharities, getCharity, createCharity, updateCharity, deleteCharity, toggleFeatured, addEvent } from '../controllers/charity.controller.js';
 import { protect, adminOnly } from '../middleware/auth.middleware.js';
-import validate from '../middleware/validate.middleware.js';
+import validateRequest from '../utils/validateRequest.js';
 
 const router = express.Router();
 
@@ -25,10 +25,10 @@ const charityEventValidationRules = [
 router.get('/', getCharities);
 router.get('/:id', getCharity);
 
-router.post('/', protect, adminOnly, charityValidationRules, validate, createCharity);
-router.put('/:id', protect, adminOnly, charityUpdateValidationRules, validate, updateCharity);
+router.post('/', protect, adminOnly, charityValidationRules, validateRequest, createCharity);
+router.put('/:id', protect, adminOnly, charityUpdateValidationRules, validateRequest, updateCharity);
 router.delete('/:id', protect, adminOnly, deleteCharity);
 router.patch('/:id/featured', protect, adminOnly, toggleFeatured);
-router.post('/:id/events', protect, adminOnly, charityEventValidationRules, validate, addEvent);
+router.post('/:id/events', protect, adminOnly, charityEventValidationRules, validateRequest, addEvent);
 
 export default router;

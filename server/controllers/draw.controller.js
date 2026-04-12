@@ -2,6 +2,7 @@ import Draw from '../models/Draw.model.js';
 import User from '../models/User.model.js';
 import Subscription from '../models/Subscription.model.js';
 import * as drawService from '../services/draw.service.js';
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { calculatePrizePool } from '../utils/prizePool.util.js';
 import { ApiError } from '../utils/apiError.js';
 import { sendApiResponse } from '../utils/apiResponse.js';
@@ -43,7 +44,9 @@ const buildParticipationStatus = (user) => {
 };
 
 const getDrawByParam = (id) =>
-  id === 'current' ? findLatestUnpublishedDraw(Draw) : findByIdOrThrow(Draw, id, 'Draw not found');
+  id === 'current'
+    ? findLatestUnpublishedDraw(Draw)
+    : findByIdOrThrow(Draw, id, 'Draw not found', {}, 'Invalid draw id');
 
 export const createDraw = asyncHandler(async (req, res) => {
   const { month, drawType, forced } = req.body;
@@ -57,9 +60,7 @@ export const createDraw = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Draw already exists for this month');
   }
   if (existing && forced) {
-    return sendApiResponse(res, 200, existing, 'Draw already exists for this month', {
-      legacy: true,
-    });
+    return sendApiResponse(res, 200, existing, 'Draw already exists for this month');
   }
 
   const activeSubs = await Subscription.find({ status: 'active' });
@@ -84,7 +85,7 @@ export const createDraw = asyncHandler(async (req, res) => {
     participantCount: revenueBreakdown.participantCount,
   });
 
-  sendApiResponse(res, 201, draw, 'Draw created successfully', { legacy: true });
+  sendApiResponse(res, 201, draw, 'Draw created successfully');
 });
 
 export const simulateDraw = asyncHandler(async (req, res) => {
@@ -106,7 +107,7 @@ export const simulateDraw = asyncHandler(async (req, res) => {
   draw.winners = winners;
   await draw.save();
 
-  sendApiResponse(res, 200, draw, 'Draw simulated successfully', { legacy: true });
+  sendApiResponse(res, 200, draw, 'Draw simulated successfully');
 });
 
 export const publishDraw = asyncHandler(async (req, res) => {
@@ -149,7 +150,7 @@ export const publishDraw = asyncHandler(async (req, res) => {
   }
 
   await draw.save();
-  sendApiResponse(res, 200, draw, 'Draw published successfully', { legacy: true });
+  sendApiResponse(res, 200, draw, 'Draw published successfully');
 });
 
 export const getPublishedDraws = asyncHandler(async (req, res) => {
@@ -173,8 +174,6 @@ export const getPublishedDraws = asyncHandler(async (req, res) => {
     total,
     pages: Math.ceil(total / limit) || 1,
   }, 'Draw history loaded successfully', {
-    collectionKey: 'draws',
-    legacy: true,
   });
 });
 
@@ -190,8 +189,7 @@ export const getCurrentDraw = asyncHandler(async (req, res) => {
       ...draw.toObject(),
       userParticipationStatus: buildParticipationStatus(user),
     },
-    'Current draw loaded successfully',
-    { legacy: true }
+    'Current draw loaded successfully'
   );
 });
 
@@ -199,7 +197,7 @@ export const uploadWinnerProof = asyncHandler(async (req, res) => {
   if (!req.file) throw new ApiError(400, 'No file uploaded');
 
   const { id } = req.params;
-  const draw = await findByIdOrThrow(Draw, id, 'Draw not found');
+  const draw = await findByIdOrThrow(Draw, id, 'Draw not found', {}, 'Invalid draw id');
 
   const winnerIndex = draw.winners.findIndex(
     (w) => w.userId.toString() === req.user._id.toString()
@@ -208,10 +206,13 @@ export const uploadWinnerProof = asyncHandler(async (req, res) => {
     throw new ApiError(403, 'You are not a winner of this draw');
   }
 
-  draw.winners[winnerIndex].proofUrl = `/uploads/proofs/${req.file.filename}`;
+  const uploadedProof = await uploadOnCloudinary(req.file.buffer);
+  if (!uploadedProof?.url) {
+    throw new ApiError(500, 'Failed to upload proof file');
+  }
+
+  draw.winners[winnerIndex].proofUrl = uploadedProof.url;
   await draw.save();
 
-  sendApiResponse(res, 200, draw.winners[winnerIndex], 'Winner proof uploaded successfully', {
-    legacy: true,
-  });
+  sendApiResponse(res, 200, draw.winners[winnerIndex], 'Winner proof uploaded successfully');
 });

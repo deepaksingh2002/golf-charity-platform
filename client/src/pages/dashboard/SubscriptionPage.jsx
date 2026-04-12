@@ -1,13 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useGetSubscriptionStatusQuery, useSubscribeMutation, useCancelSubscriptionMutation } from '../../store/api/subscriptionApiSlice';
+import {
+  useGetSubscriptionStatusQuery,
+  useGetSubscriptionConfigStatusQuery,
+  useSubscribeMutation,
+  useCancelSubscriptionMutation,
+} from '../../store/api/subscriptionApiSlice';
 import { useGetMeQuery } from '../../store/api/authApiSlice';
 import { getApiErrorMessage } from '../../store/api/apiUtils';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { Spinner } from '../../components/ui/Spinner';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || '');
+const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';
 
 const formatRenewDate = (value) => {
   if (!value) return null;
@@ -88,11 +93,19 @@ const PaymentForm = ({ onSuccess, onCancel, planLabel }) => {
 
 export default function SubscriptionPage() {
   const { data: subData, isLoading: loadingStatus, error: statusError } = useGetSubscriptionStatusQuery();
+  const { data: configData } = useGetSubscriptionConfigStatusQuery();
   const { refetch: refetchUser } = useGetMeQuery();
   const [subscribe, { isLoading: isCreating }] = useSubscribeMutation();
   const [cancelSubscription, { isLoading: isCanceling }] = useCancelSubscriptionMutation();
   const [clientSecret, setClientSecret] = useState('');
   const [pendingPlan, setPendingPlan] = useState('');
+  const [runtimeStripeKey, setRuntimeStripeKey] = useState('');
+
+  const resolvedStripeKey = stripePublicKey || runtimeStripeKey || configData?.publishableKey || '';
+  const stripePromise = useMemo(
+    () => (resolvedStripeKey ? loadStripe(resolvedStripeKey) : null),
+    [resolvedStripeKey]
+  );
 
   const loading = loadingStatus || isCreating || isCanceling;
   
@@ -111,6 +124,15 @@ export default function SubscriptionPage() {
       const result = await subscribe(selectedPlan).unwrap();
 
       if (result?.clientSecret) {
+        if (!resolvedStripeKey && result.publishableKey) {
+          setRuntimeStripeKey(result.publishableKey);
+        }
+
+        if (!(resolvedStripeKey || result.publishableKey)) {
+          toast.error('Stripe public key missing. Set VITE_STRIPE_PUBLIC_KEY in client environment.');
+          return;
+        }
+
         setPendingPlan(result.plan || selectedPlan);
         setClientSecret(result.clientSecret);
         toast.success('Payment form loaded. Complete checkout below.');
@@ -161,6 +183,12 @@ export default function SubscriptionPage() {
         <p className="text-white">Status: <strong className="capitalize">{status ?? 'inactive'}</strong></p>
         {plan ? <p className="text-zinc-300">Plan: {plan}</p> : null}
         {renewDate ? <p className="text-zinc-300">Renews: {new Date(renewDate).toLocaleDateString('en-GB')}</p> : null}
+
+        {!resolvedStripeKey ? (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+            Stripe checkout requires a publishable key. Set <strong>VITE_STRIPE_PUBLIC_KEY</strong> in client environment, or configure <strong>STRIPE_PUBLISHABLE_KEY</strong> on backend.
+          </div>
+        ) : null}
 
         {clientSecret ? (
           <div className="pt-2">

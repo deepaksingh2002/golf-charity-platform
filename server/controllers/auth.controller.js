@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { ApiError } from '../utils/apiError.js';
 import { sendApiResponse } from '../utils/apiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { readCookieToken } from '../utils/requestCookies.js';
 import {
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
@@ -21,27 +22,6 @@ const buildAuthPayload = (user, token) => {
     subscriptionStatus: user.subscriptionStatus,
     token,
   };
-};
-
-const parseCookieHeader = (cookieHeader = '') => {
-  return cookieHeader
-    .split(';')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .reduce((acc, item) => {
-      const separatorIndex = item.indexOf('=');
-      if (separatorIndex <= 0) return acc;
-      const key = item.slice(0, separatorIndex).trim();
-      const value = item.slice(separatorIndex + 1).trim();
-      acc[key] = decodeURIComponent(value);
-      return acc;
-    }, {});
-};
-
-const readCookieToken = (req, key) => {
-  if (req.cookies?.[key]) return req.cookies[key];
-  const parsed = parseCookieHeader(req.headers?.cookie || '');
-  return parsed[key] || null;
 };
 
 const issueSessionTokens = async (user, req, res) => {
@@ -86,9 +66,7 @@ export const register = asyncHandler(async (req, res) => {
   const user = await User.create({ name, email, password });
   const { accessToken } = await issueSessionTokens(user, req, res);
 
-  sendApiResponse(res, 201, buildAuthPayload(user, accessToken), 'Account created successfully', {
-    legacy: true,
-  });
+  sendApiResponse(res, 201, buildAuthPayload(user, accessToken), 'Account created successfully');
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -101,9 +79,7 @@ export const login = asyncHandler(async (req, res) => {
 
   const { accessToken } = await issueSessionTokens(user, req, res);
 
-  sendApiResponse(res, 200, buildAuthPayload(user, accessToken), 'Login successful', {
-    legacy: true,
-  });
+  sendApiResponse(res, 200, buildAuthPayload(user, accessToken), 'Login successful');
 });
 
 export const refreshSession = asyncHandler(async (req, res) => {
@@ -132,9 +108,7 @@ export const refreshSession = asyncHandler(async (req, res) => {
 
   const { accessToken } = await issueSessionTokens(user, req, res);
 
-  sendApiResponse(res, 200, buildAuthPayload(user, accessToken), 'Session refreshed successfully', {
-    legacy: true,
-  });
+  sendApiResponse(res, 200, buildAuthPayload(user, accessToken), 'Session refreshed successfully');
 });
 
 export const logout = asyncHandler(async (req, res) => {
@@ -166,7 +140,7 @@ export const getMe = asyncHandler(async (req, res) => {
     subscriptionStatus: user.subscriptionStatus,
   };
 
-  sendApiResponse(res, 200, payload, 'Profile loaded successfully', { legacy: true });
+  sendApiResponse(res, 200, payload, 'Profile loaded successfully');
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
@@ -199,9 +173,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
   const updatedUser = await user.save();
 
-  sendApiResponse(res, 200, buildProfilePayload(updatedUser), 'Profile updated successfully', {
-    legacy: true,
-  });
+  sendApiResponse(res, 200, buildProfilePayload(updatedUser), 'Profile updated successfully');
 });
 
 export const changePassword = asyncHandler(async (req, res) => {

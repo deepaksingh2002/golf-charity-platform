@@ -3,7 +3,7 @@ import { body } from 'express-validator';
 import { createDraw, simulateDraw, publishDraw, getPublishedDraws, getCurrentDraw, uploadWinnerProof } from '../controllers/draw.controller.js';
 import { protect, adminOnly } from '../middleware/auth.middleware.js';
 import upload from '../middleware/upload.middleware.js';
-import validate from '../middleware/validate.middleware.js';
+import validateRequest from '../utils/validateRequest.js';
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ const drawValidationRules = [
 router.get('/', getPublishedDraws);
 router.get('/current', protect, getCurrentDraw);
 
-router.post('/', protect, adminOnly, drawValidationRules, validate, createDraw);
+router.post('/', protect, adminOnly, drawValidationRules, validateRequest, createDraw);
 router.post('/:id/simulate', protect, adminOnly, simulateDraw);
 router.post('/:id/publish', protect, adminOnly, publishDraw);
 

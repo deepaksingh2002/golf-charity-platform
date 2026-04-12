@@ -7,18 +7,8 @@ class ApiResponse {
   }
 }
 
-const sendApiResponse = (res, statusCode, data, message = 'Success', options = {}) => {
-  const payload = new ApiResponse(statusCode, data, message);
-
-  if (options.collectionKey) {
-    payload[options.collectionKey] = data;
-  }
-
-  if (options.legacy && data && typeof data === 'object' && !Array.isArray(data)) {
-    Object.assign(payload, data);
-  }
-
-  return res.status(statusCode).json(payload);
+const sendApiResponse = (res, statusCode, data, message = 'Success') => {
+  return res.status(statusCode).json(new ApiResponse(statusCode, data, message));
 };
 
 export { ApiResponse, sendApiResponse };

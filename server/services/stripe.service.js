@@ -20,11 +20,33 @@ export const createCustomer = async (email, name) => {
 };
 
 export const createSubscription = async (customerId, priceId) => {
-  return getStripeClient().subscriptions.create({
+  const stripe = getStripeClient();
+
+  const item =
+    typeof priceId === 'string'
+      ? { price: priceId }
+      : await (async () => {
+          const product = await stripe.products.create({
+            name: priceId.productName || 'Golf Charity Subscription',
+          });
+
+          return {
+          price_data: {
+            currency: priceId.currency || 'usd',
+            product: product.id,
+            unit_amount: priceId.unitAmount,
+            recurring: {
+              interval: priceId.interval,
+            },
+          },
+        };
+        })();
+
+  return stripe.subscriptions.create({
     customer: customerId,
-    items: [{ price: priceId }],
+    items: [item],
     payment_behavior: 'default_incomplete',
-    expand: ['latest_invoice.payment_intent'],
+    expand: ['latest_invoice.payment_intent', 'latest_invoice.confirmation_secret'],
   });
 };
 

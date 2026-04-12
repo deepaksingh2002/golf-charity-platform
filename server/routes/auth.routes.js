@@ -10,7 +10,7 @@ import {
   changePassword,
 } from '../controllers/auth.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
-import validate from '../middleware/validate.middleware.js';
+import validateRequest from '../utils/validateRequest.js';
 import { loginLimiter, registerLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
@@ -49,7 +49,7 @@ router.post(
   '/register',
   registerLimiter,
   registerValidationRules,
-  validate,
+  validateRequest,
   register
 );
 
@@ -57,7 +57,7 @@ router.post(
   '/login',
   loginLimiter,
   loginValidationRules,
-  validate,
+  validateRequest,
   login
 );
 
@@ -75,7 +75,7 @@ router.put(
   '/profile',
   protect,
   updateProfileValidationRules,
-  validate,
+  validateRequest,
   updateProfile
 );
 
@@ -83,7 +83,7 @@ router.put(
   '/change-password',
   protect,
   changePasswordValidationRules,
-  validate,
+  validateRequest,
   changePassword
 );
 

@@ -49,7 +49,7 @@ export default function LoginPage() {
         _id: res._id,
         name: res.name,
         email: res.email,
-        role: res.role,
+        role: res.role || 'user',
         subscriptionStatus: res.subscriptionStatus,
       };
 
@@ -103,7 +103,7 @@ export default function LoginPage() {
                   message: 'Please include a valid email',
                 },
               })}
-              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+              className=" border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 
             <Input
@@ -112,7 +112,7 @@ export default function LoginPage() {
               placeholder="••••••••"
               error={errors.password?.message}
               {...register('password', { required: 'Password is required' })}
-              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+              className="border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 
             <div className="pt-2">

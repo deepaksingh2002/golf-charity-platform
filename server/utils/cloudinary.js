@@ -1,15 +1,32 @@
 import { v2 as cloudinary } from 'cloudinary';
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+let isConfigured = false;
+
+const ensureConfigured = () => {
+  if (isConfigured) {
+    return true;
+  }
+
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    return false;
+  }
+
+  cloudinary.config({
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET,
+  });
+
+  isConfigured = true;
+  return true;
+};
 
 export { cloudinary };
 
 export const uploadOnCloudinary = async (fileOrBuffer) => {
   if (!fileOrBuffer) return null;
+  if (!ensureConfigured()) return null;
 
   try {
     if (typeof fileOrBuffer === 'string') {
@@ -34,6 +51,8 @@ export const uploadOnCloudinary = async (fileOrBuffer) => {
 };
 
 export const deleteFromCloudinary = async (publicId, options = {}) => {
+  if (!publicId || !ensureConfigured()) return;
+
   try {
     await cloudinary.uploader.destroy(publicId, options);
   } catch (error) {

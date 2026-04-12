@@ -8,6 +8,7 @@ const getStoredUser = () => {
 const normalizeUserPayload = (payload) => {
   if (!payload || typeof payload !== 'object') return null;
 
+  // Unwrap nested data structures
   if (payload.data && typeof payload.data === 'object') {
     const normalizedData = normalizeUserPayload(payload.data);
     const rest = { ...payload };
@@ -34,26 +35,36 @@ const normalizeUserPayload = (payload) => {
     };
   }
 
-  return payload;
+  // Ensure role always exists (default to 'user')
+  const normalized = { ...payload };
+  if (!normalized.role) {
+    normalized.role = 'user';
+  }
+
+  return normalized;
 };
 
 export const hasAdminAccess = (user) => {
   const normalizedUser = normalizeUserPayload(user);
   if (!normalizedUser) return false;
 
+  // Check explicit boolean flags
   if (normalizedUser.isAdmin === true) return true;
   if (normalizedUser.is_admin === true) return true;
 
+  // Check role field - case-insensitive, trim whitespace, normalize hyphens/spaces to underscores
   const role = typeof normalizedUser.role === 'string'
     ? normalizedUser.role.toLowerCase().trim().replace(/[-\s]/g, '_')
     : '';
+  
   if (role === 'admin' || role === 'superadmin' || role === 'super_admin') {
     return true;
   }
 
+  // Check roles array (fallback)
   if (Array.isArray(normalizedUser.roles)) {
     return normalizedUser.roles.some((entry) => {
-      const normalized = typeof entry === 'string' ? entry.toLowerCase() : '';
+      const normalized = typeof entry === 'string' ? entry.toLowerCase().trim() : '';
       return normalized === 'admin' || normalized === 'superadmin' || normalized === 'super_admin';
     });
   }

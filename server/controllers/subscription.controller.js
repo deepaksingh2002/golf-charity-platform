@@ -35,6 +35,24 @@ const resolvePriceId = (plan, explicitPriceId) => {
   return process.env.STRIPE_MONTHLY_PRICE_ID;
 };
 
+const resolveInlinePriceConfig = (plan) => {
+  if (plan === 'yearly') {
+    return {
+      unitAmount: 10000,
+      interval: 'year',
+      currency: 'usd',
+      productName: 'Golf Charity Yearly Subscription',
+    };
+  }
+
+  return {
+    unitAmount: 1000,
+    interval: 'month',
+    currency: 'usd',
+    productName: 'Golf Charity Monthly Subscription',
+  };
+};
+
 const resolveSelectedPlan = (plan, priceId) => {
   const inferredPlan = priceId && priceId.toLowerCase().includes('year') ? 'yearly' : 'monthly';
   const selectedPlan = (plan || inferredPlan).toLowerCase();
@@ -106,6 +124,60 @@ const parseWebhookBody = (body) => {
   return body;
 };
 
+const resolvePublishableKey = () => {
+  if (!isPlaceholderValue(process.env.STRIPE_PUBLISHABLE_KEY)) {
+    return {
+      key: process.env.STRIPE_PUBLISHABLE_KEY,
+      derived: false,
+    };
+  }
+
+  const secret = process.env.STRIPE_SECRET_KEY || '';
+  if (secret.startsWith('sk_test_')) {
+    return {
+      key: secret.replace(/^sk_test_/, 'pk_test_'),
+      derived: true,
+    };
+  }
+
+  if (secret.startsWith('sk_live_')) {
+    return {
+      key: secret.replace(/^sk_live_/, 'pk_live_'),
+      derived: true,
+    };
+  }
+
+  return {
+    key: '',
+    derived: false,
+  };
+};
+
+export const getSubscriptionConfigStatus = asyncHandler(async (_req, res) => {
+  const hasSecretKey = !isPlaceholderValue(process.env.STRIPE_SECRET_KEY);
+  const hasMonthlyPriceId = !isPlaceholderValue(process.env.STRIPE_MONTHLY_PRICE_ID);
+  const hasYearlyPriceId = !isPlaceholderValue(process.env.STRIPE_YEARLY_PRICE_ID);
+  const hasWebhookSecret = !isPlaceholderValue(process.env.STRIPE_WEBHOOK_SECRET);
+  const usingInlinePricing = hasSecretKey && (!hasMonthlyPriceId || !hasYearlyPriceId);
+  const { key: publishableKey, derived: publishableKeyDerived } = resolvePublishableKey();
+
+  sendApiResponse(
+    res,
+    200,
+    {
+      stripeConfigured: hasSecretKey,
+      monthlyPriceConfigured: hasMonthlyPriceId,
+      yearlyPriceConfigured: hasYearlyPriceId,
+      webhookConfigured: hasWebhookSecret,
+      usingInlinePricing,
+      publishableKey,
+      publishableKeyDerived,
+      mode: hasSecretKey ? 'stripe' : 'mock',
+    },
+    'Subscription config status loaded successfully'
+  );
+});
+
 export const createCheckoutSession = asyncHandler(async (req, res) => {
   const { priceId, plan } = req.body;
   const selectedPlan = resolveSelectedPlan(plan, priceId);
@@ -118,8 +190,8 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
       ? process.env.STRIPE_YEARLY_PRICE_ID
       : process.env.STRIPE_MONTHLY_PRICE_ID
   );
-  const allowMockStripe =
-    process.env.NODE_ENV !== 'production' && (!hasRealStripeKey || !hasRequiredPriceId);
+  const allowMockStripe = process.env.NODE_ENV !== 'production' && !hasRealStripeKey;
+
   if (allowMockStripe) {
     const now = Date.now();
     const days = selectedPlan === 'yearly' ? 365 : 30;
@@ -132,12 +204,11 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
       res,
       200,
       { mocked: true, plan: selectedPlan },
-      'Subscription activated (test mode)',
-      { legacy: true }
+      'Subscription activated (test mode)'
     );
   }
 
-  if (!resolvedPriceId) {
+  if (!resolvedPriceId && !hasRealStripeKey) {
     throw new ApiError(
       400,
       `Missing Stripe price for ${selectedPlan} plan. Set STRIPE_${selectedPlan.toUpperCase()}_PRICE_ID on the backend, or use test mode without Stripe config.`
@@ -159,10 +230,12 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
 
   const subscription = await stripeService.createSubscription(
     user.stripeCustomerId,
-    resolvedPriceId
+    resolvedPriceId || resolveInlinePriceConfig(selectedPlan)
   );
 
-  const clientSecret = subscription?.latest_invoice?.payment_intent?.client_secret;
+  const clientSecret =
+    subscription?.latest_invoice?.payment_intent?.client_secret ||
+    subscription?.latest_invoice?.confirmation_secret?.client_secret;
   if (!clientSecret) {
     throw new ApiError(502, 'Stripe did not return a payment intent client secret');
   }
@@ -178,9 +251,10 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
       subscriptionId: subscription.id,
       clientSecret,
       plan: selectedPlan,
+      usingInlinePrice: !hasRequiredPriceId,
+      publishableKey: resolvePublishableKey().key,
     },
-    'Checkout session created successfully',
-    { legacy: true }
+    'Checkout session created successfully'
   );
 });
 
@@ -219,7 +293,7 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
         },
       };
 
-  sendApiResponse(res, 200, statusPayload, 'Subscription cancelled successfully', { legacy: true });
+  sendApiResponse(res, 200, statusPayload, 'Subscription cancelled successfully');
 });
 
 export const getSubscriptionStatus = asyncHandler(async (req, res) => {
@@ -229,8 +303,7 @@ export const getSubscriptionStatus = asyncHandler(async (req, res) => {
       res,
       200,
       { status: 'inactive' },
-      'Subscription status loaded successfully',
-      { legacy: true }
+      'Subscription status loaded successfully'
     );
   }
 
@@ -239,8 +312,7 @@ export const getSubscriptionStatus = asyncHandler(async (req, res) => {
       res,
       200,
       getMockSubscriptionStatus(user),
-      'Subscription status loaded successfully',
-      { legacy: true }
+      'Subscription status loaded successfully'
     );
   }
 
@@ -259,8 +331,7 @@ export const getSubscriptionStatus = asyncHandler(async (req, res) => {
     res,
     200,
     buildSubscriptionStatusPayload(user, subscription),
-    'Subscription status loaded successfully',
-    { legacy: true }
+    'Subscription status loaded successfully'
   );
 });
 

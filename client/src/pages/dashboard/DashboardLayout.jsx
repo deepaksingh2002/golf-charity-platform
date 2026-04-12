@@ -5,19 +5,26 @@ import { House, LayoutDashboard, Target, Trophy, CreditCard, HeartHandshake, Log
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { logout, selectIsAdmin, selectUser } from '../../store/slices/authSlice';
-import { useGetMeQuery } from '../../store/api/authApiSlice';
+import { useGetMeQuery, useLogoutMutation } from '../../store/api/authApiSlice';
 
 export default function DashboardLayout() {
   const dispatch = useDispatch();
   const reduxUser = useSelector(selectUser);
   const { data: userData } = useGetMeQuery(undefined, { skip: !reduxUser });
+  const [logoutSession] = useLogoutMutation();
   const user = userData || reduxUser;
   const isAdmin = useSelector(selectIsAdmin);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logoutSession().unwrap();
+    } catch {
+      // Ensure local sign-out still happens even if server call fails.
+    } finally {
+      dispatch(logout());
+      navigate('/login');
+    }
   };
 
   const navItems = [

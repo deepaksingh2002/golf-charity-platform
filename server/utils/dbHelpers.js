@@ -1,6 +1,21 @@
+import mongoose from 'mongoose';
 import { ApiError } from './apiError.js';
 
-export const findByIdOrThrow = async (Model, id, message = 'Resource not found', query = {}) => {
+export const ensureObjectId = (id, message = 'Invalid resource id') => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, message);
+  }
+};
+
+export const findByIdOrThrow = async (
+  Model,
+  id,
+  message = 'Resource not found',
+  query = {},
+  invalidMessage = 'Invalid resource id'
+) => {
+  ensureObjectId(id, invalidMessage);
+
   let queryBuilder = Model.findById(id);
 
   if (query.select) {

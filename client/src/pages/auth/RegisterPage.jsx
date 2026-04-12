@@ -3,11 +3,13 @@ import { useForm, useWatch } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useRegisterMutation } from '../../store/api/authApiSlice';
+import { useRegisterMutation, useLazyGetMeQuery } from '../../store/api/authApiSlice';
 import { getApiErrorMessage } from '../../store/api/apiUtils';
 import {
+  hasAdminAccess,
   setCredentials,
   selectIsAuthenticated,
+  selectIsAdmin,
 } from '../../store/slices/authSlice';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -17,16 +19,18 @@ export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isAdmin = useSelector(selectIsAdmin);
   const { register, handleSubmit, control, formState: { errors } } = useForm();
   const password = useWatch({ control, name: 'password' });
 
   const [registerAccount, { isLoading }] = useRegisterMutation();
+  const [fetchMe] = useLazyGetMeQuery();
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const onSubmit = async (data) => {
     try {
@@ -41,13 +45,23 @@ export default function RegisterPage() {
         _id: res._id,
         name: res.name,
         email: res.email,
-        role: res.role,
+        role: res.role || 'user',
         subscriptionStatus: res.subscriptionStatus,
       };
-      
+
       dispatch(setCredentials({ user, token }));
+
+      let resolvedUser = user;
+      // Keep auth state aligned with backend profile immediately after registration.
+      try {
+        resolvedUser = await fetchMe(undefined, true).unwrap();
+        dispatch(setCredentials({ user: resolvedUser, token }));
+      } catch {
+        // Fall back to registration payload when profile fetch is temporarily unavailable.
+      }
+
       toast.success('Account created! Welcome.');
-      navigate('/dashboard', { replace: true });
+      navigate(hasAdminAccess(resolvedUser) ? '/admin' : '/dashboard', { replace: true });
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Registration failed'));
     }
@@ -78,7 +92,7 @@ export default function RegisterPage() {
               placeholder="Deepak Singh"
               error={errors.name?.message}
               {...register('name', { required: 'Name is required' })}
-              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+              className="border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 
             <Input
@@ -93,7 +107,7 @@ export default function RegisterPage() {
                   message: 'Please include a valid email',
                 },
               })}
-              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+              className=" border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 
             <Input
@@ -105,7 +119,7 @@ export default function RegisterPage() {
                 required: 'Password is required',
                 minLength: { value: 6, message: 'Please enter a password with 6 or more characters' }
               })}
-              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+              className=" border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 
             <Input
@@ -117,7 +131,7 @@ export default function RegisterPage() {
                 required: 'Please confirm your password',
                 validate: (value) => value === password || "Passwords don't match",
               })}
-              className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
+              className=" border-zinc-700 text-white placeholder:text-zinc-600 rounded-2xl"
             />
 
             <div className="pt-2">

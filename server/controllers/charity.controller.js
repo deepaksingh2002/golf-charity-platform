@@ -2,6 +2,7 @@ import Charity from '../models/Charity.model.js';
 import { ApiError } from '../utils/apiError.js';
 import { sendApiResponse } from '../utils/apiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { ensureObjectId } from '../utils/dbHelpers.js';
 
 const CHARITY_FIELDS = ['name', 'description', 'website', 'imageUrl', 'galleryImages'];
 
@@ -43,18 +44,17 @@ export const getCharities = asyncHandler(async (req, res) => {
     total,
     pages: Math.ceil(total / limit) || 1,
   }, 'Charities loaded successfully', {
-    collectionKey: 'charities',
-    legacy: true,
   });
 });
 
 export const getCharity = asyncHandler(async (req, res) => {
+  ensureObjectId(req.params.id, 'Invalid charity id');
   const charity = await Charity.findById(req.params.id);
   if (!charity || !charity.isActive) {
     throw new ApiError(404, 'Charity not found');
   }
 
-  sendApiResponse(res, 200, charity, 'Charity loaded successfully', { legacy: true });
+  sendApiResponse(res, 200, charity, 'Charity loaded successfully');
 });
 
 export const createCharity = asyncHandler(async (req, res) => {
@@ -67,10 +67,11 @@ export const createCharity = asyncHandler(async (req, res) => {
 
   const charity = await Charity.create(charityData);
 
-  sendApiResponse(res, 201, charity, 'Charity created successfully', { legacy: true });
+  sendApiResponse(res, 201, charity, 'Charity created successfully');
 });
 
 export const updateCharity = asyncHandler(async (req, res) => {
+  ensureObjectId(req.params.id, 'Invalid charity id');
   const charity = await Charity.findByIdAndUpdate(
     req.params.id,
     pickCharityFields(req.body),
@@ -80,10 +81,11 @@ export const updateCharity = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Charity not found');
   }
 
-  sendApiResponse(res, 200, charity, 'Charity updated successfully', { legacy: true });
+  sendApiResponse(res, 200, charity, 'Charity updated successfully');
 });
 
 export const deleteCharity = asyncHandler(async (req, res) => {
+  ensureObjectId(req.params.id, 'Invalid charity id');
   const charity = await Charity.findByIdAndUpdate(
     req.params.id,
     { isActive: false },
@@ -93,10 +95,11 @@ export const deleteCharity = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Charity not found');
   }
 
-  sendApiResponse(res, 200, charity, 'Charity disabled successfully', { legacy: true });
+  sendApiResponse(res, 200, charity, 'Charity disabled successfully');
 });
 
 export const toggleFeatured = asyncHandler(async (req, res) => {
+  ensureObjectId(req.params.id, 'Invalid charity id');
   const charity = await Charity.findById(req.params.id);
   if (!charity) {
     throw new ApiError(404, 'Charity not found');
@@ -104,12 +107,11 @@ export const toggleFeatured = asyncHandler(async (req, res) => {
 
   charity.isFeatured = !charity.isFeatured;
   await charity.save();
-  sendApiResponse(res, 200, charity, 'Charity featured status updated successfully', {
-    legacy: true,
-  });
+  sendApiResponse(res, 200, charity, 'Charity featured status updated successfully');
 });
 
 export const addEvent = asyncHandler(async (req, res) => {
+  ensureObjectId(req.params.id, 'Invalid charity id');
   const charity = await Charity.findById(req.params.id);
   if (!charity) {
     throw new ApiError(404, 'Charity not found');
@@ -125,5 +127,5 @@ export const addEvent = asyncHandler(async (req, res) => {
     description: req.body.description,
   });
   await charity.save();
-  sendApiResponse(res, 200, charity, 'Event added successfully', { legacy: true });
+  sendApiResponse(res, 200, charity, 'Event added successfully');
 });

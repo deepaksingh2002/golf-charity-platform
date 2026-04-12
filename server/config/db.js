@@ -1,32 +1,26 @@
 import mongoose from 'mongoose';
 
-const globalForMongoose = globalThis;
-
-if (!globalForMongoose.mongoose) {
-  globalForMongoose.mongoose = { conn: null, promise: null };
-}
-
-const cached = globalForMongoose.mongoose;
-
 const connectDB = async () => {
   try {
-    if (cached.conn) {
-      return cached.conn;
+    const mongoConnectionString = process.env.MONGO_CONNECTION_STRING;
+    const dbName = process.env.MONGO_DB_NAME;
+
+    if (!mongoConnectionString) {
+      throw new Error('MONGO_CONNECTION_STRING is required');
     }
 
-    if (!cached.promise) {
-      if (!process.env.MONGO_URI) {
-        throw new Error('MONGO_URI is required');
-      }
-
-      cached.promise = mongoose.connect(process.env.MONGO_URI).then((conn) => conn);
+    if (!dbName) {
+      throw new Error('MONGO_DB_NAME is required');
     }
 
-    cached.conn = await cached.promise;
-    console.log(`MongoDB connected: ${cached.conn.connection.host}`);
-    return cached.conn;
+    const connectInstance = await mongoose.connect(mongoConnectionString, {
+      dbName,
+    });
+
+    console.log(`MongoDB connected!! DB_HOST: ${connectInstance.connection.host}`);
+    return connectInstance;
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error('MongoDB connection error:', error);
     process.exit(1);
   }
 };

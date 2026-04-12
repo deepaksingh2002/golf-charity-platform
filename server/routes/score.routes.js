@@ -2,7 +2,7 @@ import express from 'express';
 import { body } from 'express-validator';
 import { addScore, getScores, updateScore, deleteScore } from '../controllers/score.controller.js';
 import { protect, subscriberOnly } from '../middleware/auth.middleware.js';
-import validate from '../middleware/validate.middleware.js';
+import validateRequest from '../utils/validateRequest.js';
 
 const router = express.Router();
 
@@ -31,8 +31,8 @@ router.get('/', getScores);
 
 router.use(subscriberOnly);
 
-router.post('/', scoreValidationRules, validate, addScore);
-router.put('/:scoreId', scoreUpdateValidationRules, validate, updateScore);
+router.post('/', scoreValidationRules, validateRequest, addScore);
+router.put('/:scoreId', scoreUpdateValidationRules, validateRequest, updateScore);
 router.delete('/:scoreId', deleteScore);
 
 export default router;
