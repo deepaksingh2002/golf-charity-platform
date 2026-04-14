@@ -1,28 +1,16 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
+
+// Establishes a single MongoDB connection before the HTTP server starts.
 const connectDB = async () => {
-  try {
-    const mongoConnectionString = process.env.MONGO_CONNECTION_STRING;
-    const dbName = process.env.MONGO_DB_NAME;
-
-    if (!mongoConnectionString) {
-      throw new Error('MONGO_CONNECTION_STRING is required');
+    try {
+        const connectInstance = await mongoose.connect(`${process.env.MONGO_CONNECTION_STRING}/${process.env.MONGO_DB_NAME}`)
+        console.log(`MongoDB connected!! DB_HOST: ${connectInstance.connection.host}`);
+    } catch (error) {
+        console.log("Mongose connection error: ", error);
+        process.exit(1);
     }
+}
 
-    if (!dbName) {
-      throw new Error('MONGO_DB_NAME is required');
-    }
 
-    const connectInstance = await mongoose.connect(mongoConnectionString, {
-      dbName,
-    });
-
-    console.log(`MongoDB connected!! DB_HOST: ${connectInstance.connection.host}`);
-    return connectInstance;
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
-  }
-};
-
-export default connectDB;
+export default connectDB

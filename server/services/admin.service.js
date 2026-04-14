@@ -1,5 +1,6 @@
 import User from '../models/User.model.js';
 import Draw from '../models/Draw.model.js';
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ApiError } from '../utils/apiError.js';
 import { findByIdOrThrow } from '../utils/dbHelpers.js';
 
@@ -157,4 +158,30 @@ export const getAdminCharityReport = async () => {
   ];
 
   return User.aggregate(charityReportPipeline);
+};
+
+export const uploadAdminDrawProof = async (drawId, fileBuffer, adminUserId) => {
+  if (!fileBuffer) {
+    throw new ApiError(400, 'No file uploaded');
+  }
+
+  const draw = await findByIdOrThrow(Draw, drawId, 'Draw not found', {}, 'Invalid draw id');
+  const uploadedProof = await uploadOnCloudinary(fileBuffer);
+
+  if (!uploadedProof?.url) {
+    throw new ApiError(500, 'Failed to upload proof file');
+  }
+
+  draw.auditProof = {
+    url: uploadedProof.url,
+    uploadedAt: new Date(),
+    uploadedBy: adminUserId,
+  };
+
+  await draw.save();
+
+  return {
+    drawId: draw._id,
+    auditProof: draw.auditProof,
+  };
 };

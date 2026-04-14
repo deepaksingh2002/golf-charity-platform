@@ -11,6 +11,7 @@ import {
   updateAdminUserScore,
   updateAdminSubscription,
   verifyAdminWinner,
+  uploadAdminDrawProof,
 } from '../services/admin.service.js';
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
@@ -74,4 +75,12 @@ export const getCharityReport = asyncHandler(async (req, res) => {
   const charityReport = await getAdminCharityReport();
 
   sendApiResponse(res, 200, charityReport, 'Charity report loaded successfully');
+});
+
+export const uploadDrawProof = asyncHandler(async (req, res) => {
+  const { drawId } = req.params;
+
+  ensureObjectId(drawId, 'Invalid draw id');
+  const payload = await uploadAdminDrawProof(drawId, req.file?.buffer, req.user._id);
+  sendApiResponse(res, 200, payload, 'Draw audit proof uploaded successfully');
 });

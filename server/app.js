@@ -30,7 +30,7 @@ const registerMiddleware = () => {
     express.json({
       limit: '1mb',
       verify: (req, res, buf) => {
-        if (req.originalUrl?.startsWith('/api/subscriptions/webhook')) {
+        if (req.originalUrl?.includes('/subscriptions/webhook')) {
           req.rawBody = Buffer.from(buf);
         }
       }

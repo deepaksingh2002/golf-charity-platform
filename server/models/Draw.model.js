@@ -80,6 +80,19 @@ const drawSchema = new mongoose.Schema({
 
   publishedAt: { 
     type: Date 
+  },
+
+  auditProof: {
+    url: {
+      type: String
+    },
+    uploadedAt: {
+      type: Date
+    },
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   }
 
 }, {

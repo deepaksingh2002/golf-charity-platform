@@ -6,6 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "dev": "nodemon -r dotenv/config --experimental-json-modules index.js",
     "create:admin": "node scripts/createAdmin.js",
     "seed:charities": "node scripts/seedCharities.js",
     "repair:prod": "npm run create:admin && npm run seed:charities",

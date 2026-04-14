@@ -1,6 +1,7 @@
 import express from 'express';
-import { getDashboardStats, getAllUsers, getUserDetail, editUserScore, manageSubscription, getWinnersList, verifyWinner, getCharityReport } from '../controllers/admin.controller.js';
+import { getDashboardStats, getAllUsers, getUserDetail, editUserScore, manageSubscription, getWinnersList, verifyWinner, getCharityReport, uploadDrawProof } from '../controllers/admin.controller.js';
 import { protect, adminOnly } from '../middleware/auth.middleware.js';
+import upload from '../middleware/upload.middleware.js';
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ router.put('/users/:userId/subscription', manageSubscription);
 
 router.get('/winners', getWinnersList);
 router.put('/draws/:drawId/winners/:winnerId/verify', verifyWinner);
+router.post('/draws/:drawId/proof', upload.single('proof'), uploadDrawProof);
 
 router.get('/charity-report', getCharityReport);
 

@@ -8,13 +8,13 @@ import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { getApiErrorMessage, normalizeApiList } from '../../store/api/apiUtils';
 import { PaginationControls } from '../../components/ui/PaginationControls';
+import { useUploadAdminDrawProofMutation } from '../../store/api/adminApiSlice';
 import { 
   useGetCurrentDrawQuery, 
   useGetDrawHistoryQuery,
   useCreateDrawMutation,
   useSimulateDrawMutation,
-  usePublishDrawMutation,
-  useUploadProofMutation
+  usePublishDrawMutation
 } from '../../store/api/drawApiSlice';
 
 export default function AdminDrawsPage() {
@@ -29,7 +29,7 @@ export default function AdminDrawsPage() {
   const [createDraw, { isLoading: isCreating }] = useCreateDrawMutation();
   const [simulateDraw, { isLoading: isSimulating }] = useSimulateDrawMutation();
   const [publishDraw, { isLoading: isPublishing }] = usePublishDrawMutation();
-  const [uploadProof, { isLoading: isUploading }] = useUploadProofMutation();
+  const [uploadAdminDrawProof, { isLoading: isUploading }] = useUploadAdminDrawProofMutation();
 
   useEffect(() => {
     if (historyError) toast.error(getApiErrorMessage(historyError, 'Failed to load publish history'));
@@ -46,7 +46,7 @@ export default function AdminDrawsPage() {
     formData.append('proof', file);
 
     try {
-      await uploadProof({ id, body: formData }).unwrap();
+      await uploadAdminDrawProof({ drawId: id, body: formData }).unwrap();
       toast.success('Audit proof uploaded successfully');
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to upload proof'));

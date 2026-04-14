@@ -51,6 +51,14 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Admin'],
     }),
+    uploadAdminDrawProof: builder.mutation({
+      query: ({ drawId, body }) => ({
+        url: `/admin/draws/${drawId}/proof`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Admin', 'Draw'],
+    }),
     getCharityReport: builder.query({
       query: () => '/admin/charity-report',
       providesTags: ['Admin'],
@@ -66,5 +74,6 @@ export const {
   useManageUserSubscriptionMutation,
   useGetWinnersListQuery,
   useVerifyWinnerMutation,
+  useUploadAdminDrawProofMutation,
   useGetCharityReportQuery,
 } = adminApiSlice;
